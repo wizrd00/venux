@@ -11,7 +11,7 @@ LIB_DIR := lib
 
 OPTIMIZATION_LEVEL := -O0 #temporary
 CFLAGS := \
-	${OPTIMIZATION_LEVEL} \
+	$(OPTIMIZATION_LEVEL) \
 	-std=c99 \
 	-ffreestanding \
 	-fno-stack-protector \
@@ -24,12 +24,12 @@ CFLAGS := \
 	-Wall \
 	-Wextra
 
-.include "boot/bootloader/uefi/makefile"
-.include "libc/makefile"
+include boot/bootloader/uefi/makefile
+include libc/makefile
 
 # TODO : index sources that need to compile saperately and link to make kernel
-${BIN_DIR} :
-	mkdir -p ${BIN_DIR}
+$(BIN_DIR) :
+	mkdir -p $(BIN_DIR)
 
 clean :
-	rm ${BIN_DIR}/*
+	rm $(BIN_DIR)/*
