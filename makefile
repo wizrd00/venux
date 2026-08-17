@@ -25,7 +25,7 @@ CFLAGS := \
 	-Wextra
 
 include boot/bootloader/uefi/makefile
-include libc/makefile
+#include libc/makefile
 
 # TODO : index sources that need to compile saperately and link to make kernel
 $(BIN_DIR) :
