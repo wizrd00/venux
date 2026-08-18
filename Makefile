@@ -1,17 +1,13 @@
 .PHONY: bootloader clean
 
 CC := clang
-PATH != pwd
 
 BIN_DIR := bin
 SRC_DIR := src
 HDR_DIR := include
-LIB_DIR := lib
 
-
-OPTIMIZATION_LEVEL := -O0 #temporary
-CFLAGS := \
-	$(OPTIMIZATION_LEVEL) \
+OPTIMIZATION_LEVEL := 0 #temporary
+CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-std=c99 \
 	-ffreestanding \
 	-fno-stack-protector \
@@ -24,8 +20,8 @@ CFLAGS := \
 	-Wall \
 	-Wextra
 
-include boot/bootloader/uefi/makefile
-#include libc/makefile
+include boot/bootloader/uefi/Makefile
+include libc/Makefile
 
 # TODO : index sources that need to compile saperately and link to make kernel
 $(BIN_DIR) :
