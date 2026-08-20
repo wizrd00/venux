@@ -8,9 +8,17 @@ HDR_DIR := include
 
 OPTIMIZATION_LEVEL := 0 #temporary
 CFLAGS := -O$(OPTIMIZATION_LEVEL) \
+	-g \
+	-ggdb \
+	-gdwarf-5 \
 	-std=c99 \
+	-nostdlib \
 	-ffreestanding \
+	-fshort-wchar \
 	-fno-stack-protector \
+	-fno-exceptions \
+	-fno-threadsafe-statics \
+	-fno-asynchronous-unwind-tables \
 	-fno-pic \
 	-fno-pie \
 	-mno-red-zone \
