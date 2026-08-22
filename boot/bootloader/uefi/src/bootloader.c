@@ -34,7 +34,7 @@ efi_vprintf(const char *restrict format, va_list ap)
 	size_t fmt_size = efi_strlen(format) + 1;
 	bool special = false;
 	char *str;
-	size_t num, digit, j = 0;
+	size_t num, j = 0;
 	for (size_t i = 0; i < fmt_size; i++) {
 		if (special) {
 			special = false;
@@ -46,18 +46,17 @@ efi_vprintf(const char *restrict format, va_list ap)
 				break;
 			case 'd' :
 				num = va_arg(ap, size_t);
-				size_t count = 0, jump, tmp_num = num;
+				size_t count = 1, jump, tmp_num = num;
 				while (tmp_num != 0) {
 					tmp_num /= 10;
 					count++;
 				}
-				jump = count;
-				do {
-					digit = num % 10;
+				jump = count - 1;
+				while (--count) {
+					formatted[j + count - 1] =
+					    (char)(num % 10) + '0';
 					num /= 10;
-					formatted[j + count - 1] = (char)digit +
-					    '0';
-				} while (--count);
+				}
 				j += jump;
 				break;
 			default :
@@ -106,7 +105,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	    DescriptorSize, (VOID **) &MemoryMap);
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"GetMemoryMap() failed at second time\r\n");
-	efi_printf("hello%d\r\n", 0x1337);
+	efi_printf("hello%d%s\r\n", 0x1337, "foo");
 	HALT();
 	return _stat;
 }
