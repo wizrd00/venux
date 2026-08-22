@@ -96,34 +96,36 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	ImgHdl = ImageHandle;
 	SysTab = SystemTable;
 	CLEAR_SCREEN();
+	size_t TotalMemorySize = 0;
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
 	UINT32 DescriptorVersion;
 	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 	if (_stat != EFI_BUFFER_TOO_SMALL)
-		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
+		FATAL_ERROR(L"GetMemoryMap() must return "
+		    "EFI_BUFFER_TOO_SMALL but it didn't\r\n");
 
+	MemoryMapSize += 2 * DescriptorSize;
 	_stat = SystemTable->BootServices->AllocatePool(EfiLoaderData,
-	    DescriptorSize, (VOID **) &MemoryMap);
+	    MemoryMapSize, (VOID **) &MemoryMap);
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"AllocatePool() failed\r\n");
 
-	MemoryMapSize += 2;
 	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
-	efi_printf("hello%d%s%d\r\n", 0x1337, "foo", 0);
-/*
+
 	efi_printf("start...\r\n");
 	for (UINTN i = 0; i < DescriptorSize; i++) {
 		EFI_MEMORY_DESCRIPTOR *md = MemoryMap + i;
-		efi_printf("[%d:%dK] %d->%d\r\n", md->Type,
+		efi_printf("[%d:%dK] %d->%d\r\n", i,
 		    md->NumberOfPages * 4, md->PhysicalStart,
 		    md->PhysicalStart + md->NumberOfPages * 4096);
+		TotalMemorySize += (size_t)md->NumberOfPages * 4096;
 	}
-*/
+	efi_printf("TotalMemorySize = %d\r\n", TotalMemorySize);
 	HALT();
 	return _stat;
 }
