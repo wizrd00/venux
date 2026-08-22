@@ -46,16 +46,18 @@ efi_vprintf(const char *restrict format, va_list ap)
 				break;
 			case 'd' :
 				num = va_arg(ap, size_t);
-				size_t count = 1, jump, tmp_num = num;
+				size_t count = 0, jump, tmp_num = num;
 				while (tmp_num != 0) {
 					tmp_num /= 10;
 					count++;
 				}
-				jump = count - 1;
-				while (--count) {
-					formatted[j + count - 1] =
+				jump = count;
+				while (1) {
+					formatted[j + count-- - 1] =
 					    (char)(num % 10) + '0';
 					num /= 10;
+					if (num == 0)
+						break;
 				}
 				j += jump;
 				break;
@@ -101,11 +103,27 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 	if (_stat != EFI_BUFFER_TOO_SMALL)
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
+
 	_stat = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    DescriptorSize, (VOID **) &MemoryMap);
 	if (EFI_ERROR(_stat))
-		FATAL_ERROR(L"GetMemoryMap() failed at second time\r\n");
-	efi_printf("hello%d%s\r\n", 0x1337, "foo");
+		FATAL_ERROR(L"AllocatePool() failed\r\n");
+
+	MemoryMapSize += 2;
+	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
+	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+	if (EFI_ERROR(_stat))
+		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
+	efi_printf("hello%d%s%d\r\n", 0x1337, "foo", 0);
+/*
+	efi_printf("start...\r\n");
+	for (UINTN i = 0; i < DescriptorSize; i++) {
+		EFI_MEMORY_DESCRIPTOR *md = MemoryMap + i;
+		efi_printf("[%d:%dK] %d->%d\r\n", md->Type,
+		    md->NumberOfPages * 4, md->PhysicalStart,
+		    md->PhysicalStart + md->NumberOfPages * 4096);
+	}
+*/
 	HALT();
 	return _stat;
 }
