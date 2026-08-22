@@ -26,7 +26,6 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-Werror \
 	-Wall \
 	-Wextra \
-	-Wno-unused-but-set-variable
 
 include boot/bootloader/uefi/Makefile
 include libc/Makefile
