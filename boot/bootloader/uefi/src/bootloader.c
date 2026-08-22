@@ -1,5 +1,8 @@
 #include "bootloader.h"
 
+EFI_HANDLE ImgHdl;
+EFI_SYSTEM_TABLE *SysTab;
+
 static size_t
 efi_strlen(const char *s)
 {
@@ -9,21 +12,30 @@ efi_strlen(const char *s)
 	return len;
 }
 
+static void
+efi_fputs(const char *restrict s, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *ConOut)
+{
+	CHAR16 wide_formatted[FORMATTED_SIZE];
+	CHAR16 *ptr = wide_formatted;
+	while (*s != '\0') {
+		*ptr = (CHAR16)*s;
+		s++;
+		ptr++;
+	}
+	*ptr = (CHAR16)'\0';
+	ConOut->OutputString(ConOut, wide_formatted);
+	return;
+}
+
 static int
 efi_vprintf(const char *restrict format, va_list ap)
 {
 	char formatted[FORMATTED_SIZE];
 	size_t fmt_size = efi_strlen(format) + 1;
-	bool skip = false, special = false;
+	bool special = false;
 	char *str;
 	size_t num, digit, j = 0;
 	for (size_t i = 0; i < fmt_size; i++) {
-		if (skip) {
-			skip = false;
-			formatted[j] = format[i];
-			j++;
-			continue;
-		}
 		if (special) {
 			special = false;
 			switch (format[i]) {
@@ -31,32 +43,38 @@ efi_vprintf(const char *restrict format, va_list ap)
 				str = va_arg(ap, char *);
 				while(*str != '\0')
 					formatted[j++] = *str++;
-			case 'z' :
+				break;
+			case 'd' :
 				num = va_arg(ap, size_t);
-				size_t count = 1, jump = 0, tmp_num = num;
+				size_t count = 0, jump, tmp_num = num;
 				while (tmp_num != 0) {
 					tmp_num /= 10;
 					count++;
-					jump++;
 				}
-				while (count--) {
+				jump = count;
+				do {
 					digit = num % 10;
 					num /= 10;
-					formatted[j + count] = (char) digit;
-				}
+					formatted[j + count - 1] = (char)digit +
+					    '0';
+				} while (--count);
 				j += jump;
+				break;
 			default :
-				return -1;
+				formatted[j++] = '%';
+				formatted[j++] = format[i];
+				break;
 			}
+			continue;
 		}
-		if (format[i] == '\\') {
-			skip = true;
-		} else if (format[i] == '%') {
+		if (format[i] == '%')
 			special = true;
-		}
+		else
+			formatted[j++] = format[i];
 	}
-	formatted[j] = '\0';
-	return 0;
+	formatted[j - 1] = '\0';
+	efi_fputs(formatted, SysTab->ConOut);
+	return (int)j;
 }
 
 static int
@@ -74,6 +92,8 @@ EFI_STATUS EFIAPI
 efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_STATUS _stat = EFI_SUCCESS;
+	ImgHdl = ImageHandle;
+	SysTab = SystemTable;
 	CLEAR_SCREEN();
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
@@ -84,6 +104,9 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
 	_stat = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    DescriptorSize, (VOID **) &MemoryMap);
-	efi_printf("hello%s", "hello");
+	if (EFI_ERROR(_stat))
+		FATAL_ERROR(L"GetMemoryMap() failed at second time\r\n");
+	efi_printf("hello%d\r\n", 0x1337);
+	HALT();
 	return _stat;
 }

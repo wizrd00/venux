@@ -1,3 +1,5 @@
+*.efi
+*.pdb
 *.o
 *.swp
 qemu/

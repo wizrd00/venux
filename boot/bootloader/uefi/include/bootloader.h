@@ -6,6 +6,7 @@
 #include <stdarg.h>
 
 #undef NULL
+
 #include <Uefi.h>
 
 #define FORMATTED_SIZE 1024
