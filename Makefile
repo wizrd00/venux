@@ -10,7 +10,6 @@ OPTIMIZATION_LEVEL := 0 #temporary
 CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-g \
 	-ggdb \
-	-gdwarf-5 \
 	-std=c99 \
 	-nostdlib \
 	-ffreestanding \
