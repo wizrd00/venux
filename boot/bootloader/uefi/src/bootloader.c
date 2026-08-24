@@ -28,12 +28,10 @@ efi_fputs(const char *restrict s, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *ConOut)
 }
 
 static int
-efi_vprintf(const char *restrict format, va_list ap)
+efi_vsprintf(char *restrict str, const char *restrict format, va_list ap)
 {
-	char formatted[FORMATTED_SIZE];
 	size_t fmt_size = efi_strlen(format) + 1;
 	bool special = false;
-	char *str;
 	int count = 0, jump;
 	size_t tmp_num, j = 0;
 	for (size_t i = 0; i < fmt_size; i++) {
@@ -41,9 +39,9 @@ efi_vprintf(const char *restrict format, va_list ap)
 			special = false;
 			switch (format[i]) {
 			case 's' :
-				str = va_arg(ap, char *);
-				while(*str != '\0')
-					formatted[j++] = *str++;
+				char *str_char = va_arg(ap, char *);
+				while(*str_char != '\0')
+					str[j++] = *str_char++;
 				break;
 			case 'd' :
 				int num_int = va_arg(ap, int);
@@ -63,8 +61,8 @@ efi_vprintf(const char *restrict format, va_list ap)
 				NUM_TO_STR(num_size);
 				break;
 			default :
-				formatted[j++] = '%';
-				formatted[j++] = format[i];
+				str[j++] = '%';
+				str[j++] = format[i];
 				break;
 			}
 			continue;
@@ -72,11 +70,30 @@ efi_vprintf(const char *restrict format, va_list ap)
 		if (format[i] == '%')
 			special = true;
 		else
-			formatted[j++] = format[i];
+			str[j++] = format[i];
 	}
-	formatted[j - 1] = '\0';
-	efi_fputs(formatted, SysTab->ConOut);
+	str[j - 1] = '\0';
 	return (int)j;
+}
+
+static int
+efi_vprintf(const char *restrict format, va_list ap)
+{
+	char formatted[FORMATTED_SIZE];
+	int result = efi_vsprintf(formatted, format, ap);
+	efi_fputs(formatted, SysTab->ConOut);
+	return result;
+}
+
+static int
+efi_sprintf(char *restrict str, const char *restrict format, ...)
+{
+	va_list ap;
+	int result;
+	va_start(ap, format);
+	result = efi_vsprintf(str, format, ap);
+	va_end(ap);
+	return result;
 }
 
 static int
@@ -97,7 +114,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	ImgHdl = ImageHandle;
 	SysTab = SystemTable;
 	CLEAR_SCREEN();
-	size_t TotalMemorySize = 0;
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
 	UINT32 DescriptorVersion;
@@ -106,28 +122,17 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (_stat != EFI_BUFFER_TOO_SMALL)
 		FATAL_ERROR(L"GetMemoryMap() must return "
 		    "EFI_BUFFER_TOO_SMALL but it didn't\r\n");
-
 	MemoryMapSize += 2 * DescriptorSize;
 	_stat = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    MemoryMapSize, (VOID **) &MemoryMap);
 	if (EFI_ERROR(_stat))
-		FATAL_ERROR(L"AllocatePool() failed\r\n");
+		FATAL_ERROR(L"AllocatePool() failed and cannot allocate enough"
+		"space to hold Memory Map\r\n");
 
 	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
-
-	for (UINTN i = 0; i < MemoryMapSize / DescriptorSize; i++) {
-		EFI_MEMORY_DESCRIPTOR *md =
-		    (EFI_MEMORY_DESCRIPTOR *)((char *)MemoryMap +
-		    i * DescriptorSize);
-		efi_printf("[%u:%zK] %z->%z\r\n", md->Type,
-		    md->NumberOfPages * 4, (size_t)md->PhysicalStart,
-		    (size_t)md->PhysicalStart + md->NumberOfPages * 4096);
-		TotalMemorySize += (size_t)md->NumberOfPages * 4096;
-	}
-	efi_printf("TotalMemorySize = %z\r\n", TotalMemorySize);
 	HALT();
 	return _stat;
 }
