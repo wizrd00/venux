@@ -34,7 +34,8 @@ efi_vprintf(const char *restrict format, va_list ap)
 	size_t fmt_size = efi_strlen(format) + 1;
 	bool special = false;
 	char *str;
-	size_t num, j = 0;
+	int count = 0, jump;
+	size_t tmp_num, j = 0;
 	for (size_t i = 0; i < fmt_size; i++) {
 		if (special) {
 			special = false;
@@ -45,24 +46,21 @@ efi_vprintf(const char *restrict format, va_list ap)
 					formatted[j++] = *str++;
 				break;
 			case 'd' :
-				num = va_arg(ap, size_t);
-				int count = 0, jump;
-				if (num == 0) {
-					formatted[j++] = '0';
-					break;
-				}
-				size_t tmp_num = num;
-				while (tmp_num != 0) {
-					tmp_num /= 10;
-					count++;
-				}
-				jump = count;
-				while (count > 0) {
-					formatted[j + count-- - 1] =
-					    (char)(num % 10) + '0';
-					num /= 10;
-				}
-				j += jump;
+				int num_int = va_arg(ap, int);
+				NUM_TO_STR(num_int);
+				break;
+			case 'u' :
+				unsigned int num_uint = va_arg(ap, unsigned int);
+				NUM_TO_STR(num_uint);
+				break;
+			case 'l' :
+				unsigned long num_ulong = va_arg(ap,
+				    unsigned long);
+				NUM_TO_STR(num_ulong);
+				break;
+			case 'z' :
+				size_t num_size = va_arg(ap, size_t);
+				NUM_TO_STR(num_size);
 				break;
 			default :
 				formatted[j++] = '%';
@@ -120,21 +118,16 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
 
-	/*
-	efi_printf("start...\r\n");
-	efi_printf("[%d:%dK] %d->%d\r\n", 0, 1234567, 12345612345, 765432);
-	efi_printf("[%d:%dK] %d->%d\r\n", 18, 0, 39876543234, 765432);
-	efi_printf("[%d:%dK] %d->%d\r\n", 20, 7654321, 0, 765432);
-	efi_printf("[%d:%dK] %d->%d\r\n", 48, 9876544, 20593867987, 0);
-	*/
-	for (UINTN i = 0; i < DescriptorSize; i++) {
-		EFI_MEMORY_DESCRIPTOR *md = MemoryMap + i;
-		efi_printf("[%d:%dK] %d->%d\r\n", (size_t)i,
+	for (UINTN i = 0; i < MemoryMapSize / DescriptorSize; i++) {
+		EFI_MEMORY_DESCRIPTOR *md =
+		    (EFI_MEMORY_DESCRIPTOR *)((char *)MemoryMap +
+		    i * DescriptorSize);
+		efi_printf("[%u:%zK] %z->%z\r\n", md->Type,
 		    md->NumberOfPages * 4, (size_t)md->PhysicalStart,
 		    (size_t)md->PhysicalStart + md->NumberOfPages * 4096);
 		TotalMemorySize += (size_t)md->NumberOfPages * 4096;
 	}
-	efi_printf("TotalMemorySize = %d\r\n", TotalMemorySize);
+	efi_printf("TotalMemorySize = %z\r\n", TotalMemorySize);
 	HALT();
 	return _stat;
 }

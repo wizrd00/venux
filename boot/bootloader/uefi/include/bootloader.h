@@ -13,6 +13,29 @@
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 
+#define NUM_TO_STR(num)\
+	if (num == 0) {\
+		formatted[j++] = '0';\
+		break;\
+	}\
+	if (num < 0) {\
+		formatted[j++] = '-';\
+		num = -num;\
+	}\
+	tmp_num = num;\
+	while (tmp_num != 0) {\
+		tmp_num /= 10;\
+		count++;\
+	}\
+	tmp_num = num;\
+	jump = count;\
+	while (count > 0) {\
+		formatted[j + count-- - 1] =\
+		    (char)(tmp_num % 10) + '0';\
+		tmp_num /= 10;\
+	}\
+	j += jump;
+
 #define HALT()\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
