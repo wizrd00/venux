@@ -46,18 +46,21 @@ efi_vprintf(const char *restrict format, va_list ap)
 				break;
 			case 'd' :
 				num = va_arg(ap, size_t);
-				size_t count = 0, jump, tmp_num = num;
+				int count = 0, jump;
+				if (num == 0) {
+					formatted[j++] = '0';
+					break;
+				}
+				size_t tmp_num = num;
 				while (tmp_num != 0) {
 					tmp_num /= 10;
 					count++;
 				}
 				jump = count;
-				while (1) {
+				while (count > 0) {
 					formatted[j + count-- - 1] =
 					    (char)(num % 10) + '0';
 					num /= 10;
-					if (num == 0)
-						break;
 				}
 				j += jump;
 				break;
@@ -117,12 +120,18 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (EFI_ERROR(_stat))
 		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
 
+	/*
 	efi_printf("start...\r\n");
+	efi_printf("[%d:%dK] %d->%d\r\n", 0, 1234567, 12345612345, 765432);
+	efi_printf("[%d:%dK] %d->%d\r\n", 18, 0, 39876543234, 765432);
+	efi_printf("[%d:%dK] %d->%d\r\n", 20, 7654321, 0, 765432);
+	efi_printf("[%d:%dK] %d->%d\r\n", 48, 9876544, 20593867987, 0);
+	*/
 	for (UINTN i = 0; i < DescriptorSize; i++) {
 		EFI_MEMORY_DESCRIPTOR *md = MemoryMap + i;
-		efi_printf("[%d:%dK] %d->%d\r\n", i,
-		    md->NumberOfPages * 4, md->PhysicalStart,
-		    md->PhysicalStart + md->NumberOfPages * 4096);
+		efi_printf("[%d:%dK] %d->%d\r\n", (size_t)i,
+		    md->NumberOfPages * 4, (size_t)md->PhysicalStart,
+		    (size_t)md->PhysicalStart + md->NumberOfPages * 4096);
 		TotalMemorySize += (size_t)md->NumberOfPages * 4096;
 	}
 	efi_printf("TotalMemorySize = %d\r\n", TotalMemorySize);

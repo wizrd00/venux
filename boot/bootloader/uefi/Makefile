@@ -1,4 +1,4 @@
-.PHONY: bootloader
+.PHONY: bootloader clean-bootloader
 
 BOOTLOADER_NAME := BOOTX64.efi
 BOOTLOADER_EXE := $(BOOTLOADER_NAME)
@@ -17,3 +17,6 @@ bootloader : $(BOOTLOADER_EXE)
 
 $(BOOTLOADER_EXE) : $(BOOTLOADER_SRC) $(BOOTLOADER_HDR)
 	$(CC) $(CFLAGS) $(BOOTLOADER_CFLAGS) -o $(BOOTLOADER_EXE) $(BOOTLOADER_SRC)
+
+clean-bootloader :
+	rm BOOTX64.*
