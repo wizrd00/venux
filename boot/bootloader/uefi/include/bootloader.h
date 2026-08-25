@@ -5,11 +5,18 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#undef NULL
-
 #include <Uefi.h>
+#include <Protocol/SimpleFileSystem.h>
+#include <Protocol/LoadedImage.h>
+
+#include "elf.h"
+
+#define LOAD_ERROR_HANDLE_PROTOCOL 1
+#define LOAD_ERROR_OPEN_VOLUME 2
+#define LOAD_ERROR_OPEN_FILE 3
 
 #define FORMATTED_SIZE 1024
+#define KERNEL_NAME L"venux.elf"
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 
@@ -40,19 +47,29 @@
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));\
-		SysTab->ConOut->OutputString(SysTab->ConOut,\
-		    L"Halting...\r\n");\
+		efi_printf("Halting...\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
 		while (1);\
 	} while (0)
 
-#define FATAL_ERROR(msg)\
+#define FATAL_ERROR(...)\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));\
-		SysTab->ConOut->OutputString(SysTab->ConOut,\
-		    L"[FATAL ERROR] -> " msg);\
+		efi_printf("[FATAL ERROR] -> " __VA_ARGS__);\
+		efi_printf("\r\n");\
+		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
+		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
+		HALT();\
+	} while (0)
+
+#define LOAD_ERROR(...)\
+	do {\
+		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
+		    EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));\
+		efi_printf("[LOAD ERROR] -> " __VA_ARGS__);\
+		efi_printf("\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
 		HALT();\

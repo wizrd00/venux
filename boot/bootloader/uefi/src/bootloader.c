@@ -2,6 +2,7 @@
 
 EFI_HANDLE ImgHdl;
 EFI_SYSTEM_TABLE *SysTab;
+EFI_STATUS status = EFI_SUCCESS;
 
 static size_t
 efi_strlen(const char *s)
@@ -107,32 +108,72 @@ efi_printf(const char *restrict format, ...)
 	return result;
 }
 
+static int
+efi_load_kernel_file(EFI_FILE_PROTOCOL **file)
+{
+	int ret = 0;
+	EFI_LOADED_IMAGE *LoadedImage = NULL;
+	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
+	    (VOID **) &LoadedImage);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
+
+	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *FileSystem = NULL;
+	EFI_GUID FileSystemGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+	status = SysTab->BootServices->HandleProtocol(LoadedImage->DeviceHandle,
+	    &FileSystemGuid, (VOID **) &FileSystem);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
+
+	EFI_FILE_PROTOCOL *Volume = NULL;
+	status = FileSystem->OpenVolume(FileSystem, &Volume);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_OPEN_VOLUME;
+	
+	EFI_FILE_PROTOCOL *KernelFile = NULL;
+	status = Volume->Open(Volume, &KernelFile, KERNEL_NAME,
+	    EFI_FILE_MODE_READ, (UINT64)0);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_OPEN_FILE;
+	*file = KernelFile;
+	return ret;
+}
+
+static int
+efi_load_kernel(void)
+{
+	int ret = 0;
+	EFI_FILE_PROTOCOL *KernelFile = NULL;
+	ret = efi_load_kernel_file(&KernelFile);
+	if (ret != 0)
+		return ret;
+	return ret;
+}
+
 EFI_STATUS EFIAPI
 efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
-	EFI_STATUS _stat = EFI_SUCCESS;
+	int ret = 0;
 	ImgHdl = ImageHandle;
 	SysTab = SystemTable;
 	CLEAR_SCREEN();
+	/*
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
 	UINT32 DescriptorVersion;
-	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
+	status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-	if (_stat != EFI_BUFFER_TOO_SMALL)
-		FATAL_ERROR(L"GetMemoryMap() must return "
-		    "EFI_BUFFER_TOO_SMALL but it didn't\r\n");
 	MemoryMapSize += 2 * DescriptorSize;
-	_stat = SystemTable->BootServices->AllocatePool(EfiLoaderData,
+	status = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    MemoryMapSize, (VOID **) &MemoryMap);
-	if (EFI_ERROR(_stat))
-		FATAL_ERROR(L"AllocatePool() failed and cannot allocate enough"
-		"space to hold Memory Map\r\n");
-
-	_stat = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
+	status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-	if (EFI_ERROR(_stat))
-		FATAL_ERROR(L"GetMemoryMap() failed\r\n");
+	*/
+	ret = efi_load_kernel();
+	if (ret != 0)
+		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
+		    ret, status);
 	HALT();
-	return _stat;
+	return status;
 }
