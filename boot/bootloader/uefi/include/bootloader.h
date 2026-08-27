@@ -14,9 +14,13 @@
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
 #define LOAD_ERROR_OPEN_VOLUME 2
 #define LOAD_ERROR_OPEN_FILE 3
+#define LOAD_ERROR_READ_FILE 4
+#define LOAD_ERROR_SEEK_FILE 5
+#define LOAD_ERROR_ALLOCATE_PAGE 6
 
 #define FORMATTED_SIZE 1024
-#define KERNEL_NAME L"venux.elf"
+#define KERNEL_NAME L"a.out"
+#define KERNEL_BASE 0xffffffff80000000
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 

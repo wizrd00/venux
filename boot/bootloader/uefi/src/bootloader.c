@@ -109,7 +109,7 @@ efi_printf(const char *restrict format, ...)
 }
 
 static int
-efi_load_kernel_file(EFI_FILE_PROTOCOL **file)
+efi_open_kernel_file(EFI_FILE_PROTOCOL **file)
 {
 	int ret = 0;
 	EFI_LOADED_IMAGE *LoadedImage = NULL;
@@ -144,10 +144,91 @@ static int
 efi_load_kernel(void)
 {
 	int ret = 0;
+	size_t kernel_size = 0;
 	EFI_FILE_PROTOCOL *KernelFile = NULL;
-	ret = efi_load_kernel_file(&KernelFile);
+	ret = efi_open_kernel_file(&KernelFile);
 	if (ret != 0)
 		return ret;
+
+	struct boot_elf64_ehdr ehdr;
+	size_t ehdr_size = sizeof(struct boot_elf64_ehdr);
+	status = KernelFile->Read(KernelFile, (UINTN *)&ehdr_size,
+	    (VOID *)&ehdr);
+	if (EFI_ERROR(status)) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_READ_FILE;
+	}
+
+	/* TODO : checking entry header first */
+
+	struct boot_elf64_phdr phdr;
+	size_t phdr_size = sizeof(struct boot_elf64_phdr);
+	status = KernelFile->SetPosition(KernelFile, ehdr.phoff);
+	if (EFI_ERROR(status)) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_SEEK_FILE;
+	}
+
+	for (int i = 0; i < (int)ehdr.phnum; i++) {
+		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
+		    (VOID *)&phdr);
+		if (EFI_ERROR(status)) {
+			KernelFile->Close(KernelFile);
+			return ret = LOAD_ERROR_READ_FILE;
+		}
+		if (phdr.p_type == PT_LOAD)
+			kernel_size += phdr_size;
+	}
+
+	EFI_PHYSICAL_ADDRESS Memory = KERNEL_BASE;
+	UINTN Pages = (UINTN)((kernel_size / 4096) + 1);
+	status = SysTab->BootServies->AllocatePages(AllocateAddress,
+	    EfiLoaderData, Pages, &Memory);
+	if (EFI_ERROR(status)) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_ALLOCATE_PAGE;
+	}
+
+	status = KernelFile->SetPosition(KernelFile, ehdr.phoff);
+	if (EFI_ERROR(status)) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_SEEK_FILE;
+	}
+
+	for (int i = 0; i < (int)ehdr.phnum; i++) {
+		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
+		    (VOID *)&phdr);
+		if (EFI_ERROR(status)) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_READ_FILE;
+		}
+		if (phdr.p_type != PT_LOAD)
+			continue;
+		/* TODO : add function efi_memcpy and so on*/
+	}
+
+	/*
+	efi_printf("e_ident : %d %d %d %d %d %d %d %d %d %d\r\n",
+	    ehdr.e_ident[EI_MAG0], ehdr.e_ident[EI_MAG1],
+	    ehdr.e_ident[EI_MAG2], ehdr.e_ident[EI_MAG3],
+	    ehdr.e_ident[EI_CLASS], ehdr.e_ident[EI_DATA],
+	    ehdr.e_ident[EI_VERSION], ehdr.e_ident[EI_OSABI],
+	    ehdr.e_ident[EI_ABIVERSION], ehdr.e_ident[EI_PAD]);
+	efi_printf("e_type : %d\r\n", (int)ehdr.e_type);
+	efi_printf("e_machine : %d\r\n", (int)ehdr.e_machine);
+	efi_printf("e_version : %d\r\n", ehdr.e_version);
+	efi_printf("e_entry : %l\r\n", ehdr.e_entry);
+	efi_printf("e_phoff : %l\r\n", ehdr.e_phoff);
+	efi_printf("e_shoff : %l\r\n", ehdr.e_shoff);
+	efi_printf("e_flags : %d\r\n", ehdr.e_flags);
+	efi_printf("e_ehsize : %d\r\n", (int)ehdr.e_ehsize);
+	efi_printf("e_phentsize : %d\r\n", (int)ehdr.e_phentsize);
+	efi_printf("e_phnum : %d\r\n", (int)ehdr.e_phnum);
+	efi_printf("e_shentsize : %d\r\n", (int)ehdr.e_shentsize);
+	efi_printf("e_shnum : %d\r\n", (int)ehdr.e_shnum);
+	efi_printf("e_shstrndx : %d\r\n", (int)ehdr.e_shstrndx);
+	*/
 	return ret;
 }
 

@@ -13,7 +13,6 @@
 #define EI_OSABI 7
 #define EI_ABIVERSION 8
 #define EI_PAD 9
-#define EI_NIDENT 16
 
 #define ET_EXEC 2
 
@@ -31,8 +30,9 @@
 
 #define ELFNIDENT 16
 
+#define PT_LOAD 1
 
-struct boot_elf64 {
+struct boot_elf64_ehdr {
 	UINT8 e_ident[ELFNIDENT];
 	UINT16 e_type;
 	UINT16 e_machine;
@@ -47,6 +47,17 @@ struct boot_elf64 {
 	UINT16 e_shentsize;
 	UINT16 e_shnum;
 	UINT16 e_shstrndx;
+};
+
+struct boot_elf64_phdr {
+	UINT32 p_type;
+	UINT32 p_flags;
+	UINT64 p_offset;
+	UINT64 p_vaddr;
+	UINT64 p_paddr;
+	UINT64 p_filesz;
+	UINT64 p_memsz;
+	UINT64 p_align;
 };
 
 #endif
