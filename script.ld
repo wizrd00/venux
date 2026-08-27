@@ -6,7 +6,7 @@ _kernel_gap = 1M;
 
 _kernel_stack_size = 64K;
 _kernel_stack_start = _kernel_base + _kernel_gap - _kernel_stack_size;
-_kernel_stack_end = _kernel_stack_size + _kernel_stack_size;
+_kernel_stack_end = _kernel_stack_start + _kernel_stack_size;
 
 SECTIONS
 {
