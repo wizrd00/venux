@@ -2,4 +2,5 @@
 *.pdb
 *.o
 *.swp
+a.out
 qemu/
