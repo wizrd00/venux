@@ -4,6 +4,33 @@ EFI_HANDLE ImgHdl;
 EFI_SYSTEM_TABLE *SysTab;
 EFI_STATUS status = EFI_SUCCESS;
 
+static void *
+efi_memcpy(void *dst, const void *src, size_t n)
+{
+	unsigned char *tmp_dst = (unsigned char *)dst;
+	const unsigned char *tmp_src = (const unsigned char *)src;
+	while (n > 0) {
+		*tmp_dst++ = *tmp_src++;
+		n--;
+	}
+	return dst;
+}
+
+static int
+efi_memcmp(const void *s1, const void *s2, size_t n)
+{
+	const unsigned char *tmp_s1 = (const unsigned char *)s1;
+	const unsigned char *tmp_s2 = (const unsigned char *)s2;
+	while (n > 0) {
+		if ((*tmp_s1 - *tmp_s2) != 0)
+			return (int)(*tmp_s1 - *tmp_s2);
+		tmp_s1++;
+		tmp_s2++;
+		n--;
+	}
+	return 0;
+}
+
 static size_t
 efi_strlen(const char *s)
 {
@@ -141,10 +168,27 @@ efi_open_kernel_file(EFI_FILE_PROTOCOL **file)
 }
 
 static int
+efi_validate_elf(const struct boot_elf64_ehdr *ehdr)
+{
+	int ret = 0;
+	unsigned char exp_ident[] = {0x7f, 'E', 'L', 'F', ELFCLASS64,
+	    ELFDATA2LSB, EV_CURRENT, ELFOSABI_SYSV, 0, 0, 0, 0, 0, 0, 0, 0};
+	if (efi_memcmp((void *)ehdr->e_ident, (void *)exp_ident,
+	    (size_t)ELFNIDENT) != 0)
+		return ret = LOAD_ERROR_INVALID_ELF_IDENT;
+	if (ehdr->e_type != (UINT16)ET_EXEC)
+		return ret = LOAD_ERROR_INVALID_ELF_TYPE;
+	if (ehdr->e_machine != (UINT16)EM_X86_64)
+		return ret = LOAD_ERROR_INVALID_ELF_MACHINE;
+	return ret;
+}
+
+static int
 efi_load_kernel(void)
 {
 	int ret = 0;
 	size_t kernel_size = 0;
+	size_t kernel_start = 0;
 	EFI_FILE_PROTOCOL *KernelFile = NULL;
 	ret = efi_open_kernel_file(&KernelFile);
 	if (ret != 0)
@@ -159,43 +203,66 @@ efi_load_kernel(void)
 		return ret = LOAD_ERROR_READ_FILE;
 	}
 
-	/* TODO : checking entry header first */
+	ret = efi_validate_elf(&ehdr);
+	if (ret != 0) {
+		KernelFile->Close(KernelFile);
+		return ret;
+	}
 
 	struct boot_elf64_phdr phdr;
 	size_t phdr_size = sizeof(struct boot_elf64_phdr);
-	status = KernelFile->SetPosition(KernelFile, ehdr.phoff);
+	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
 		KernelFile->Close(KernelFile);
 		return ret = LOAD_ERROR_SEEK_FILE;
 	}
 
-	for (int i = 0; i < (int)ehdr.phnum; i++) {
+	bool valid_entry = false;
+	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
 		if (EFI_ERROR(status)) {
 			KernelFile->Close(KernelFile);
 			return ret = LOAD_ERROR_READ_FILE;
 		}
-		if (phdr.p_type == PT_LOAD)
+		if (phdr.p_type == PT_LOAD) {
 			kernel_size += phdr_size;
+			if ((ehdr.e_entry >= phdr.p_vaddr) &&
+			    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
+				valid_entry = true;
+			if (i == 0)
+				kernel_start = (size_t)phdr.p_vaddr;
+		}
 	}
 
-	EFI_PHYSICAL_ADDRESS Memory = KERNEL_BASE;
+	if (kernel_size == 0) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_NO_PTLOAD;
+	}
+
+	if (!valid_entry) {
+		KernelFile->Close(KernelFile);
+		return ret = LOAD_ERROR_INVALID_ENTRY;
+	}
+
+	EFI_PHYSICAL_ADDRESS Memory = (EFI_PHYSICAL_ADDRESS)(kernel_start -
+	    (size_t)STACK_SIZE);
 	UINTN Pages = (UINTN)((kernel_size / 4096) + 1);
-	status = SysTab->BootServies->AllocatePages(AllocateAddress,
+	status = SysTab->BootServices->AllocatePages(AllocateAddress,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
 		KernelFile->Close(KernelFile);
 		return ret = LOAD_ERROR_ALLOCATE_PAGE;
 	}
 
-	status = KernelFile->SetPosition(KernelFile, ehdr.phoff);
+	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
 		KernelFile->Close(KernelFile);
+		SysTab->BootServices->FreePages(Memory, Pages);
 		return ret = LOAD_ERROR_SEEK_FILE;
 	}
 
-	for (int i = 0; i < (int)ehdr.phnum; i++) {
+	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
 		if (EFI_ERROR(status)) {
@@ -205,7 +272,7 @@ efi_load_kernel(void)
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
-		/* TODO : add function efi_memcpy and so on*/
+		
 	}
 
 	/*
