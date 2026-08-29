@@ -16,6 +16,17 @@ efi_memcpy(void *dst, const void *src, size_t n)
 	return dst;
 }
 
+static void *
+efi_memset(void *s, int c, size_t n)
+{
+	unsigned char *tmp_s = (unsigned char *)s;
+	while (n > 0) {
+		*tmp_s = (unsigned char)c;
+		n--;
+	}
+	return s;
+}
+
 static int
 efi_memcmp(const void *s1, const void *s2, size_t n)
 {
@@ -189,6 +200,7 @@ efi_load_kernel(void)
 	int ret = 0;
 	size_t kernel_size = 0;
 	size_t kernel_start = 0;
+	unsigned char buffer[BUFFER_SIZE];
 	EFI_FILE_PROTOCOL *KernelFile = NULL;
 	ret = efi_open_kernel_file(&KernelFile);
 	if (ret != 0)
@@ -226,7 +238,7 @@ efi_load_kernel(void)
 			return ret = LOAD_ERROR_READ_FILE;
 		}
 		if (phdr.p_type == PT_LOAD) {
-			kernel_size += phdr_size;
+			kernel_size += phdr.p_memsz;
 			if ((ehdr.e_entry >= phdr.p_vaddr) &&
 			    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
 				valid_entry = true;
@@ -272,30 +284,61 @@ efi_load_kernel(void)
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
-		
-	}
 
-	/*
-	efi_printf("e_ident : %d %d %d %d %d %d %d %d %d %d\r\n",
-	    ehdr.e_ident[EI_MAG0], ehdr.e_ident[EI_MAG1],
-	    ehdr.e_ident[EI_MAG2], ehdr.e_ident[EI_MAG3],
-	    ehdr.e_ident[EI_CLASS], ehdr.e_ident[EI_DATA],
-	    ehdr.e_ident[EI_VERSION], ehdr.e_ident[EI_OSABI],
-	    ehdr.e_ident[EI_ABIVERSION], ehdr.e_ident[EI_PAD]);
-	efi_printf("e_type : %d\r\n", (int)ehdr.e_type);
-	efi_printf("e_machine : %d\r\n", (int)ehdr.e_machine);
-	efi_printf("e_version : %d\r\n", ehdr.e_version);
-	efi_printf("e_entry : %l\r\n", ehdr.e_entry);
-	efi_printf("e_phoff : %l\r\n", ehdr.e_phoff);
-	efi_printf("e_shoff : %l\r\n", ehdr.e_shoff);
-	efi_printf("e_flags : %d\r\n", ehdr.e_flags);
-	efi_printf("e_ehsize : %d\r\n", (int)ehdr.e_ehsize);
-	efi_printf("e_phentsize : %d\r\n", (int)ehdr.e_phentsize);
-	efi_printf("e_phnum : %d\r\n", (int)ehdr.e_phnum);
-	efi_printf("e_shentsize : %d\r\n", (int)ehdr.e_shentsize);
-	efi_printf("e_shnum : %d\r\n", (int)ehdr.e_shnum);
-	efi_printf("e_shstrndx : %d\r\n", (int)ehdr.e_shstrndx);
-	*/
+		if (((size_t)phdr.p_vaddr < kernel_start) ||
+		    ((size_t)phdr.p_vaddr >= kernel_start + kernel_size)) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_INVALID_PHDR;
+		}
+
+		if (phdr.p_memsz < phdr.p_filesz) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_INVALID_PHDR;
+		}
+
+		UINT64 pos;
+		status = KernelFile->GetPosition(KernelFile, &pos);
+		if (EFI_ERROR(status)) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_SEEK_FILE;
+		}
+
+		status = KernelFile->SetPosition(KernelFile, phdr.p_offset);
+		if (EFI_ERROR(status)) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_SEEK_FILE;
+		}
+
+		size_t filesz = (size_t)phdr.p_filesz;
+		size_t gapsz = (size_t)phdr.p_memsz - filesz;
+		size_t addr = (size_t)phdr.p_vaddr;
+		while (filesz > 0) {
+			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
+			    filesz : BUFFER_SIZE);
+			status = KernelFile->Read(KernelFile, &readsz,
+			    (VOID *)buffer);
+			if (EFI_ERROR(status)) {
+				KernelFile->Close(KernelFile);
+				SysTab->BootServices->FreePages(Memory, Pages);
+				return ret = LOAD_ERROR_READ_FILE;
+			}
+			efi_memcpy((void *)addr, (void *)buffer, readsz);
+			filesz -= readsz;
+			addr += readsz;
+		}
+		efi_memset((void *)addr, 0, gapsz);
+
+		status = KernelFile->SetPosition(KernelFile, pos);
+		if (EFI_ERROR(status)) {
+			KernelFile->Close(KernelFile);
+			SysTab->BootServices->FreePages(Memory, Pages);
+			return ret = LOAD_ERROR_SEEK_FILE;
+		}
+	}
 	return ret;
 }
 

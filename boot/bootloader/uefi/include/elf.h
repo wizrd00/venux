@@ -16,7 +16,7 @@
 
 #define ET_EXEC 2
 
-#define EM_X86_64 17
+#define EM_X86_64 62
 
 #define EV_CURRENT 1
 
