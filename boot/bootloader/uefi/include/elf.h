@@ -20,8 +20,6 @@
 
 #define EV_CURRENT 1
 
-#define MAGNUM {0x7f, 'E', 'L', 'F'}
-
 #define ELFCLASS64 2
 
 #define ELFDATA2LSB 1
