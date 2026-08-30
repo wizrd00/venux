@@ -14,22 +14,22 @@ SECTIONS
 	. = _kernel_start;
 	.text : ALIGN(4K) {
 		_kernel_text_start = .;
-		*(.text)
+		*(.text*)
 		_kernel_text_end = .;
 	}
 	.rodata : ALIGN(4K) {
 		_kernel_rodata_start = .;
-		*(.rodata)
+		*(.rodata*)
 		_kernel_rodata_end = .;
 	}
 	.data : ALIGN(4K) {
 		_kernel_data_start = .;
-		*(.data)
+		*(.data*)
 		_kernel_data_end = .;
 	}
 	.bss : ALIGN(4K) {
 		_kernel_bss_start = .;
-		*(.bss)
+		*(.bss*)
 		_kernel_bss_end = .;
 	}
 	_kernel_end = .;
