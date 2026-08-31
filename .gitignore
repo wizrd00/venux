@@ -2,6 +2,7 @@
 *.efi
 *.pdb
 *.o
+*.a
 *.swp
 a.out
 qemu/
