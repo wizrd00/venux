@@ -2,6 +2,7 @@
 
 CC := clang
 AS := nasm
+LD := ld
 AR := ar
 ARCH := amd64
 
@@ -31,6 +32,8 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-Wextra \
 	-Wno-unused-function \
 
+ALL_CFLAGS :=
+
 SFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-g \
 	-f elf64
@@ -42,7 +45,7 @@ include kernel/Makefile
 include libc/Makefile
 
 all : $(MODULES)
-	$(CC) $(CFLAGS) -Wl,-T,script.ld -o venux.elf $(BIN_DIR)/*.o
+	$(LD) -T script.ld -no-pie -o venux.elf $(BIN_DIR)/*.a
 
 $(BIN_DIR) :
 	mkdir -p $(BIN_DIR)
@@ -50,5 +53,5 @@ $(BIN_DIR) :
 clean :
 	@echo "clean-all clean-bootloader clean-kernel"
 
-clean-all : clean clean-bootloader
+clean-all : clean clean-bootloader clean-kernel
 	rm $(BIN_DIR)/*

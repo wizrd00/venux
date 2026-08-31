@@ -26,7 +26,7 @@
 
 #define FORMATTED_SIZE 1024
 #define BUFFER_SIZE 1024
-#define KERNEL_NAME L"a.out"
+#define KERNEL_NAME L"venux.elf"
 #define KERNEL_BASE 0xffffffff80000000
 #define STACK_SIZE 4096
 
