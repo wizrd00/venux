@@ -1,6 +1,9 @@
-.PHONY: bootloader clean
+.PHONY: all clean clean-all
 
 CC := clang
+AS := nasm
+AR := ar
+ARCH := amd64
 
 BIN_DIR := bin
 SRC_DIR := src
@@ -28,12 +31,24 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-Wextra \
 	-Wno-unused-function \
 
+SFLAGS := -O$(OPTIMIZATION_LEVEL) \
+	-g \
+	-f elf64
+
+MODULES := bootloader kernel libc
+
 include boot/bootloader/uefi/Makefile
+include kernel/Makefile
 include libc/Makefile
 
-# TODO : index sources that need to compile saperately and link to make kernel
+all : $(MODULES)
+	$(CC) $(CFLAGS) -Wl,-T,script.ld -o venux.elf $(BIN_DIR)/*.o
+
 $(BIN_DIR) :
 	mkdir -p $(BIN_DIR)
 
 clean :
+	@echo "clean-all clean-bootloader clean-kernel"
+
+clean-all : clean clean-bootloader
 	rm $(BIN_DIR)/*
