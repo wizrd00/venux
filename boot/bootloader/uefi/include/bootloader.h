@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#include <Uefi.h>
-#include <Protocol/SimpleFileSystem.h>
-#include <Protocol/LoadedImage.h>
+#include "Uefi.h"
+#include "Protocol/SimpleFileSystem.h"
+#include "Protocol/LoadedImage.h"
 
 #include "elf.h"
 

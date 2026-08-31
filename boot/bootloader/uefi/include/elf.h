@@ -1,7 +1,7 @@
 #ifndef _BOOTLOADER_ELF_H
 #define _BOOTLOADER_ELF_H
 
-#include <Uefi.h>
+#include "Uefi.h"
 
 #define EI_MAG0 0
 #define EI_MAG1 1
