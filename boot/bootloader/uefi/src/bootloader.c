@@ -21,7 +21,7 @@ efi_memset(void *s, int c, size_t n)
 {
 	unsigned char *tmp_s = (unsigned char *)s;
 	while (n > 0) {
-		*tmp_s = (unsigned char)c;
+		*tmp_s++ = (unsigned char)c;
 		n--;
 	}
 	return s;
