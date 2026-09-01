@@ -10,9 +10,7 @@ _kernel_stack_end = _kernel_stack_start + _kernel_stack_size;
 
 PHDRS
 {
-	text PT_LOAD PHDRS FLAGS(5);
-	rodata PT_LOAD PHDRS FLAGS(4);
-	data PT_LOAD PHDRS FLAGS(6);
+	kern PT_LOAD PHDRS;
 }
 
 SECTIONS
@@ -23,22 +21,22 @@ SECTIONS
 		_kernel_text_start = .;
 		*(.text*)
 		_kernel_text_end = .;
-	} :text
+	} :kern
 	.rodata : ALIGN(4K) {
 		_kernel_rodata_start = .;
 		*(.rodata*)
 		_kernel_rodata_end = .;
-	} :rodata
+	} :kern
 	.data : ALIGN(4K) {
 		_kernel_data_start = .;
 		*(.data*)
 		_kernel_data_end = .;
-	} :data
+	} :kern
 	.bss : ALIGN(4K) {
 		_kernel_bss_start = .;
 		*(.bss*)
 		_kernel_bss_end = .;
-	} :data
+	} :kern
 	_kernel_end = .;
 	_kernel_size = _kernel_end - _kernel_start;
 }

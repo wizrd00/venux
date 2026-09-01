@@ -3,6 +3,9 @@
 EFI_HANDLE ImgHdl;
 EFI_SYSTEM_TABLE *SysTab;
 EFI_STATUS status = EFI_SUCCESS;
+size_t kernel_size = 0;
+size_t kernel_start = 0;
+size_t kernel_end = 0;
 
 static void *
 efi_memcpy(void *dst, const void *src, size_t n)
@@ -198,8 +201,6 @@ static int
 efi_load_kernel(void)
 {
 	int ret = 0;
-	size_t kernel_size = 0;
-	size_t kernel_start = 0;
 	unsigned char buffer[BUFFER_SIZE];
 	EFI_FILE_PROTOCOL *KernelFile = NULL;
 	ret = efi_open_kernel_file(&KernelFile);
@@ -230,6 +231,7 @@ efi_load_kernel(void)
 	}
 
 	bool valid_entry = false;
+	UINT64 start = 0, end = 0;
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
@@ -237,15 +239,26 @@ efi_load_kernel(void)
 			KernelFile->Close(KernelFile);
 			return ret = LOAD_ERROR_READ_FILE;
 		}
-		if (phdr.p_type == PT_LOAD) {
-			kernel_size += phdr.p_memsz;
-			if ((ehdr.e_entry >= phdr.p_vaddr) &&
-			    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
-				valid_entry = true;
-			if (i == 0)
-				kernel_start = (size_t)phdr.p_vaddr;
+		if (phdr.p_type != PT_LOAD)
+			continue;
+		if (phdr.p_memsz < phdr.p_filesz) {
+			KernelFile->Close(KernelFile);
+			return ret = LOAD_ERROR_INVALID_PHDR;
+		}
+		if ((ehdr.e_entry >= phdr.p_vaddr) &&
+		    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
+			valid_entry = true;
+		if (i == 0) {
+			start = phdr.p_vaddr;
+			end = start + phdr.p_memsz;
+		} else {
+			start = (start < phdr.p_vaddr) ? start : phdr.p_vaddr;
+			end  = (end > phdr.p_vaddr) ? end : phdr.p_vaddr;
 		}
 	}
+	kernel_start = (size_t)(start);
+	kernel_end = (size_t)(end);
+	kernel_size = kernel_end - kernel_start;
 
 	if (kernel_size == 0) {
 		KernelFile->Close(KernelFile);
@@ -257,10 +270,9 @@ efi_load_kernel(void)
 		return ret = LOAD_ERROR_INVALID_ENTRY;
 	}
 
-	EFI_PHYSICAL_ADDRESS Memory = (EFI_PHYSICAL_ADDRESS)(kernel_start -
-	    (size_t)STACK_SIZE);
-	UINTN Pages = (UINTN)((kernel_size / 4096) + 1);
-	status = SysTab->BootServices->AllocatePages(AllocateAddress,
+	EFI_PHYSICAL_ADDRESS Memory;
+	UINTN Pages = (UINTN)((kernel_size + STACK_SIZE) / 4096 + 1);
+	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
 		KernelFile->Close(KernelFile);
@@ -292,12 +304,6 @@ efi_load_kernel(void)
 			return ret = LOAD_ERROR_INVALID_PHDR;
 		}
 
-		if (phdr.p_memsz < phdr.p_filesz) {
-			KernelFile->Close(KernelFile);
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_INVALID_PHDR;
-		}
-
 		UINT64 pos;
 		status = KernelFile->GetPosition(KernelFile, &pos);
 		if (EFI_ERROR(status)) {
@@ -315,7 +321,8 @@ efi_load_kernel(void)
 
 		size_t filesz = (size_t)phdr.p_filesz;
 		size_t gapsz = (size_t)phdr.p_memsz - filesz;
-		size_t addr = (size_t)phdr.p_vaddr;
+		size_t addr = (size_t)Memory + STACK_SIZE +
+		    ((size_t)phdr.p_vaddr - kernel_start);
 		while (filesz > 0) {
 			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
 			    filesz : BUFFER_SIZE);
