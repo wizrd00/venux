@@ -56,6 +56,12 @@
 	}\
 	j += jump;
 
+#define LOAD_KERNEL_CLEAN_UP()\
+	do {\
+		KernelFile->Close(KernelFile);\
+		Volume->Close(Volume);\
+	} while (0);
+
 #define HALT()\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
