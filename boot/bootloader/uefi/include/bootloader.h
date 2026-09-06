@@ -10,6 +10,7 @@
 #include "Protocol/LoadedImage.h"
 
 #include "elf.h"
+#include "halt.h"
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
 #define LOAD_ERROR_OPEN_VOLUME 2
@@ -62,7 +63,7 @@
 		efi_printf("Halting...\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
-		while (1);\
+		efi_halt();\
 	} while (0)
 
 #define FATAL_ERROR(...)\

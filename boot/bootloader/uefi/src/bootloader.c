@@ -4,8 +4,10 @@ EFI_HANDLE ImgHdl;
 EFI_SYSTEM_TABLE *SysTab;
 EFI_STATUS status = EFI_SUCCESS;
 size_t kernel_size = 0;
-size_t kernel_start = 0;
-size_t kernel_end = 0;
+size_t virt_kernel_start = 0;
+size_t virt_kernel_end = 0;
+size_t real_kernel_start = 0;
+size_t real_kernel_end = 0;
 
 static void *
 efi_memcpy(void *dst, const void *src, size_t n)
@@ -256,9 +258,9 @@ efi_load_kernel(void)
 			end  = (end > phdr.p_vaddr) ? end : phdr.p_vaddr;
 		}
 	}
-	kernel_start = (size_t)(start);
-	kernel_end = (size_t)(end);
-	kernel_size = kernel_end - kernel_start;
+	virt_kernel_start = (size_t)(start);
+	virt_kernel_end = (size_t)(end);
+	kernel_size = virt_kernel_end - virt_kernel_start;
 
 	if (kernel_size == 0) {
 		KernelFile->Close(KernelFile);
@@ -278,6 +280,8 @@ efi_load_kernel(void)
 		KernelFile->Close(KernelFile);
 		return ret = LOAD_ERROR_ALLOCATE_PAGE;
 	}
+	real_kernel_start = (size_t)Memory;
+	real_kernel_end = real_kernel_start + kernel_size;
 
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
@@ -297,8 +301,8 @@ efi_load_kernel(void)
 		if (phdr.p_type != PT_LOAD)
 			continue;
 
-		if (((size_t)phdr.p_vaddr < kernel_start) ||
-		    ((size_t)phdr.p_vaddr >= kernel_start + kernel_size)) {
+		if (((size_t)phdr.p_vaddr < virt_kernel_start) ||
+		    ((size_t)phdr.p_vaddr >= virt_kernel_start + kernel_size)) {
 			KernelFile->Close(KernelFile);
 			SysTab->BootServices->FreePages(Memory, Pages);
 			return ret = LOAD_ERROR_INVALID_PHDR;
@@ -322,7 +326,7 @@ efi_load_kernel(void)
 		size_t filesz = (size_t)phdr.p_filesz;
 		size_t gapsz = (size_t)phdr.p_memsz - filesz;
 		size_t addr = (size_t)Memory + STACK_SIZE +
-		    ((size_t)phdr.p_vaddr - kernel_start);
+		    ((size_t)phdr.p_vaddr - virt_kernel_start);
 		while (filesz > 0) {
 			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
 			    filesz : BUFFER_SIZE);
@@ -371,6 +375,9 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
+		    ret, status);
+	if (ret != 0)
+		LOAD_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
 	HALT();
 	return status;
