@@ -5,6 +5,7 @@ EFI_SYSTEM_TABLE *SysTab;
 EFI_STATUS status = EFI_SUCCESS;
 EFI_FILE_PROTOCOL *Volume = NULL;
 EFI_FILE_PROTOCOL *KernelFile = NULL;
+unsigned char *page_tables = NULL;
 size_t kernel_size = 0;
 size_t virt_kernel_base = 0;
 size_t virt_kernel_start = 0;
@@ -12,148 +13,6 @@ size_t virt_kernel_end = 0;
 size_t real_kernel_base = 0;
 size_t real_kernel_start = 0;
 size_t real_kernel_end = 0;
-
-static void *
-efi_memcpy(void *dst, const void *src, size_t n)
-{
-	unsigned char *tmp_dst = (unsigned char *)dst;
-	const unsigned char *tmp_src = (const unsigned char *)src;
-	while (n > 0) {
-		*tmp_dst++ = *tmp_src++;
-		n--;
-	}
-	return dst;
-}
-
-static void *
-efi_memset(void *s, int c, size_t n)
-{
-	unsigned char *tmp_s = (unsigned char *)s;
-	while (n > 0) {
-		*tmp_s++ = (unsigned char)c;
-		n--;
-	}
-	return s;
-}
-
-static int
-efi_memcmp(const void *s1, const void *s2, size_t n)
-{
-	const unsigned char *tmp_s1 = (const unsigned char *)s1;
-	const unsigned char *tmp_s2 = (const unsigned char *)s2;
-	while (n > 0) {
-		if ((*tmp_s1 - *tmp_s2) != 0)
-			return (int)(*tmp_s1 - *tmp_s2);
-		tmp_s1++;
-		tmp_s2++;
-		n--;
-	}
-	return 0;
-}
-
-static size_t
-efi_strlen(const char *s)
-{
-	size_t len = 0;
-	while (*s++ != '\0')
-		len++;
-	return len;
-}
-
-static void
-efi_fputs(const char *restrict s, EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *ConOut)
-{
-	CHAR16 wide_formatted[FORMATTED_SIZE];
-	CHAR16 *ptr = wide_formatted;
-	while (*s != '\0') {
-		*ptr = (CHAR16)*s;
-		s++;
-		ptr++;
-	}
-	*ptr = (CHAR16)'\0';
-	ConOut->OutputString(ConOut, wide_formatted);
-	return;
-}
-
-static int
-efi_vsprintf(char *restrict str, const char *restrict format, va_list ap)
-{
-	size_t fmt_size = efi_strlen(format) + 1;
-	bool special = false;
-	int count = 0, jump;
-	size_t tmp_num, j = 0;
-	for (size_t i = 0; i < fmt_size; i++) {
-		if (special) {
-			special = false;
-			switch (format[i]) {
-			case 's' :
-				char *str_char = va_arg(ap, char *);
-				while(*str_char != '\0')
-					str[j++] = *str_char++;
-				break;
-			case 'd' :
-				int num_int = va_arg(ap, int);
-				NUM_TO_STR(num_int);
-				break;
-			case 'u' :
-				unsigned int num_uint = va_arg(ap, unsigned int);
-				NUM_TO_STR(num_uint);
-				break;
-			case 'l' :
-				unsigned long num_ulong = va_arg(ap,
-				    unsigned long);
-				NUM_TO_STR(num_ulong);
-				break;
-			case 'z' :
-				size_t num_size = va_arg(ap, size_t);
-				NUM_TO_STR(num_size);
-				break;
-			default :
-				str[j++] = '%';
-				str[j++] = format[i];
-				break;
-			}
-			continue;
-		}
-		if (format[i] == '%')
-			special = true;
-		else
-			str[j++] = format[i];
-	}
-	str[j - 1] = '\0';
-	return (int)j;
-}
-
-static int
-efi_vprintf(const char *restrict format, va_list ap)
-{
-	char formatted[FORMATTED_SIZE];
-	int result = efi_vsprintf(formatted, format, ap);
-	efi_fputs(formatted, SysTab->ConOut);
-	return result;
-}
-
-static int
-efi_sprintf(char *restrict str, const char *restrict format, ...)
-{
-	va_list ap;
-	int result;
-	va_start(ap, format);
-	result = efi_vsprintf(str, format, ap);
-	va_end(ap);
-	return result;
-}
-
-static int
-efi_printf(const char *restrict format, ...)
-{
-	va_list ap;
-	int result;
-	va_start(ap, format);
-	result = efi_vprintf(format, ap);
-	va_end(ap);
-	return result;
-}
 
 static int
 efi_open_kernel_file(void)
@@ -357,10 +216,56 @@ efi_load_kernel(void)
 }
 
 static int
+efi_create_tables(void)
+{
+	int ret = 0;
+	EFI_PHYSICAL_ADDRESS Memory;
+	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
+	    EfiLoaderData, (UINTN)PAGE_TABLES_COUNT, &Memory);
+	if (EFI_ERROR(status))
+		return ret = MAP_ERROR_ALLOCATE_PAGE;
+	page_tables = (unsigned char *)Memory;
+	efi_memset((void *)page_tables, 0, PAGE_TABLES_COUNT * 4096);
+	return ret;
+}
+
+static int
+efi_map_page(size_t real_addr, size_t virt_addr)
+{
+	int ret = 0;
+	virt_addr = virt_addr & 0xffffffffffff;
+	real_addr = real_addr & 0xffffffffffff;
+	UINT64 *pml4 = (UINT64 *)page_tables;
+	UINT64 *pdpt = pml4 + 512;
+	UINT64 *pd = pdpt + 512;
+	UINT64 *pt = pd + 512;
+	int pml4e_index = (int)(virt_addr >> 39);
+	int pdpte_index = (int)((virt_addr >> 30) & 0x1ff);
+	int pde_index = (int)((virt_addr >> 21) & 0x1ff);
+	int pte_index = (int)((virt_addr >> 12) & 0x1ff);
+	pml4[pml4e_index] = (UINT64)(real_addr | 0x005);
+	pdpt[pdpte_index] = pml4[pml4e_index];
+	pd[pdpte_index] = pml4[pml4e_index];
+	pt[pte_index] = pml4[pml4e_index];
+	return ret;
+}
+
+static int
 efi_map_kernel(void)
 {
 	int ret = 0;
-	/* TODO */
+	if (!PAGE_ALIGNED(real_kernel_base))
+		ret = MAP_ERROR_PAGE_ALIGNED;
+	if (!PAGE_ALIGNED(virt_kernel_base))
+		ret = MAP_ERROR_PAGE_ALIGNED;
+	ret = efi_create_tables();
+	if (ret != 0)
+		return ret;
+	for (size_t real = real_kernel_base, virt = virt_kernel_base;
+	    real < real_kernel_end; real += 4096, virt += 4096) {
+		efi_map_page(real, virt);
+	}
+	/* TODO : implement efi_apply_tables() in assembly */
 	return ret;
 }
 

@@ -9,6 +9,9 @@
 #include "Protocol/SimpleFileSystem.h"
 #include "Protocol/LoadedImage.h"
 
+#include "globals.h"
+#include "efi_stdio.h"
+#include "efi_string.h"
 #include "elf.h"
 #include "halt.h"
 
@@ -25,36 +28,12 @@
 #define LOAD_ERROR_INVALID_PHDR 11
 #define LOAD_ERROR_NO_PTLOAD 12
 
-#define FORMATTED_SIZE 1024
-#define BUFFER_SIZE 1024
-#define KERNEL_NAME L"venux.elf"
-#define KERNEL_BASE 0xffffffff80000000
-#define STACK_SIZE 4096
+#define MAP_ERROR_PAGE_ALIGNED 1
+#define MAP_ERROR_ALLOCATE_PAGE 2
+
+#define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
-
-#define NUM_TO_STR(num)\
-	if (num == 0) {\
-		str[j++] = '0';\
-		break;\
-	}\
-	if (num < 0) {\
-		str[j++] = '-';\
-		num = -num;\
-	}\
-	tmp_num = num;\
-	while (tmp_num != 0) {\
-		tmp_num /= 10;\
-		count++;\
-	}\
-	tmp_num = num;\
-	jump = count;\
-	while (count > 0) {\
-		str[j + count-- - 1] =\
-		    (char)(tmp_num % 10) + '0';\
-		tmp_num /= 10;\
-	}\
-	j += jump;
 
 #define LOAD_KERNEL_CLEAN_UP()\
 	do {\
