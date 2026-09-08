@@ -13,6 +13,7 @@
 #include "efi_stdio.h"
 #include "efi_string.h"
 #include "elf.h"
+#include "pagetables.h"
 #include "halt.h"
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
@@ -41,6 +42,17 @@
 		Volume->Close(Volume);\
 	} while (0);
 
+#define MODIFY_SYSTAB()\
+	do {\
+		SysTab->ConsoleInHandle = NULL;\
+		SysTab->ConIn = NULL;\
+		SysTab->ConsoleOutHandle = NULL;\
+		SysTab->ConOut = NULL;\
+		SysTab->StandardErrorHandle = NULL;\
+		SysTab->StdErr = NULL;\
+		SysTab->BootServices = NULL;\
+	} while (0);
+
 #define HALT()\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
@@ -67,6 +79,17 @@
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));\
 		efi_printf("[LOAD ERROR] -> " __VA_ARGS__);\
+		efi_printf("\r\n");\
+		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
+		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
+		HALT();\
+	} while (0)
+
+#define MAP_ERROR(...)\
+	do {\
+		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
+		    EFI_TEXT_ATTR(EFI_BLUE, EFI_BLACK));\
+		efi_printf("[MAP ERROR] -> " __VA_ARGS__);\
 		efi_printf("\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\

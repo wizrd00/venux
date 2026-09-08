@@ -6,6 +6,9 @@ EFI_STATUS status = EFI_SUCCESS;
 EFI_FILE_PROTOCOL *Volume = NULL;
 EFI_FILE_PROTOCOL *KernelFile = NULL;
 unsigned char *page_tables = NULL;
+size_t efi_app_size = 0;
+size_t efi_app_start = 0;
+size_t efi_app_end = 0;
 size_t kernel_size = 0;
 size_t virt_kernel_base = 0;
 size_t virt_kernel_start = 0;
@@ -140,8 +143,8 @@ efi_load_kernel(void)
 		LOAD_KERNEL_CLEAN_UP();
 		return ret = LOAD_ERROR_ALLOCATE_PAGE;
 	}
-	real_kernel_start = (size_t)Memory;
-	real_kernel_base = real_kernel_start - STACK_SIZE;
+	real_kernel_base = (size_t)Memory;
+	real_kernel_start = real_kernel_base + STACK_SIZE;
 	real_kernel_end = real_kernel_start + kernel_size;
 
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
@@ -186,7 +189,7 @@ efi_load_kernel(void)
 
 		size_t filesz = (size_t)phdr.p_filesz;
 		size_t gapsz = (size_t)phdr.p_memsz - filesz;
-		size_t addr = (size_t)Memory + STACK_SIZE +
+		size_t addr = real_kernel_start +
 		    ((size_t)phdr.p_vaddr - virt_kernel_start);
 		while (filesz > 0) {
 			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
@@ -216,37 +219,10 @@ efi_load_kernel(void)
 }
 
 static int
-efi_create_tables(void)
-{
-	int ret = 0;
-	EFI_PHYSICAL_ADDRESS Memory;
-	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
-	    EfiLoaderData, (UINTN)PAGE_TABLES_COUNT, &Memory);
-	if (EFI_ERROR(status))
-		return ret = MAP_ERROR_ALLOCATE_PAGE;
-	page_tables = (unsigned char *)Memory;
-	efi_memset((void *)page_tables, 0, PAGE_TABLES_COUNT * 4096);
-	return ret;
-}
-
-static int
 efi_map_page(size_t real_addr, size_t virt_addr)
 {
 	int ret = 0;
-	virt_addr = virt_addr & 0xffffffffffff;
-	real_addr = real_addr & 0xffffffffffff;
-	UINT64 *pml4 = (UINT64 *)page_tables;
-	UINT64 *pdpt = pml4 + 512;
-	UINT64 *pd = pdpt + 512;
-	UINT64 *pt = pd + 512;
-	int pml4e_index = (int)(virt_addr >> 39);
-	int pdpte_index = (int)((virt_addr >> 30) & 0x1ff);
-	int pde_index = (int)((virt_addr >> 21) & 0x1ff);
-	int pte_index = (int)((virt_addr >> 12) & 0x1ff);
-	pml4[pml4e_index] = (UINT64)(real_addr | 0x005);
-	pdpt[pdpte_index] = pml4[pml4e_index];
-	pd[pdpte_index] = pml4[pml4e_index];
-	pt[pte_index] = pml4[pml4e_index];
+	/* TODO : write new mapping algorithm */
 	return ret;
 }
 
@@ -258,14 +234,23 @@ efi_map_kernel(void)
 		ret = MAP_ERROR_PAGE_ALIGNED;
 	if (!PAGE_ALIGNED(virt_kernel_base))
 		ret = MAP_ERROR_PAGE_ALIGNED;
-	ret = efi_create_tables();
-	if (ret != 0)
-		return ret;
+	/* TODO */
 	for (size_t real = real_kernel_base, virt = virt_kernel_base;
 	    real < real_kernel_end; real += 4096, virt += 4096) {
 		efi_map_page(real, virt);
 	}
-	/* TODO : implement efi_apply_tables() in assembly */
+	return ret;
+}
+
+static int
+efi_map_efi_app(void)
+{
+	int ret = 0;
+	if (!PAGE_ALIGNED(efi_app_start))
+		ret = MAP_ERROR_PAGE_ALIGNED;
+	for (size_t i = efi_app_start; i < efi_app_end; i += 4096) {
+		efi_map_page(i, i);
+	}
 	return ret;
 }
 
@@ -275,13 +260,37 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	int ret = 0;
 	ImgHdl = ImageHandle;
 	SysTab = SystemTable;
+	EFI_LOADED_IMAGE *LoadedImage = NULL;
+	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
+	    (VOID **) &LoadedImage);
+	efi_app_size = (size_t)LoadedImage->ImageSize;
+	efi_app_start = (size_t)LoadedImage->ImageBase;
+	efi_app_end = efi_app_start + efi_app_size;
 	CLEAR_SCREEN();
 
+	/* TODO validate efi_app_start to not to be in (kern_start, kern_end) */
+
+	efi_printf("call efi_load_kernel()  ");
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
+	efi_printf("DONE\r\n");
 
+	efi_printf("call efi_map_kernel()  ");
+	ret = efi_map_kernel();
+	if (ret != 0)
+		MAP_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
+		    ret, status);
+	efi_printf("DONE\r\n");
+
+	ret = efi_map_efi_app();
+	if (ret != 0)
+		MAP_ERROR("efi_map_efi_app() returned %d with EFI_STATUS %d",
+		    ret, status);
+
+	efi_printf("getting memory map and calling ExitBootServices()\r\n");
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
 	UINT32 DescriptorVersion;
@@ -301,12 +310,14 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (EFI_ERROR(status))
 		FATAL_ERROR("GetMemoryMap() failed with status %d", status);
 
-	/* TODO : call ExitBootServices() */
+	status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
+	if (EFI_ERROR(status))
+		FATAL_ERROR("ExitBootServices() failed with status %d", status);
 
-	ret = efi_map_kernel();
-	if (ret != 0)
-		LOAD_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
-		    ret, status);
-	HALT();
+	MODIFY_SYSTAB();
+
+	efi_apply_tables();
+
+	efi_halt();
 	return status;
 }
