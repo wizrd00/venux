@@ -12,9 +12,14 @@
 #include "globals.h"
 #include "efi_stdio.h"
 #include "efi_string.h"
-#include "elf.h"
 #include "pagetables.h"
 #include "halt.h"
+#include "elf.h"
+
+#define PML4_ENTRY_FLAGS 0x003
+#define PDPT_ENTRY_FLAGS 0x003
+#define PD_ENTRY_FLAGS 0x003
+#define PT_ENTRY_FLAGS 0x003
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
 #define LOAD_ERROR_OPEN_VOLUME 2
@@ -31,10 +36,14 @@
 
 #define MAP_ERROR_PAGE_ALIGNED 1
 #define MAP_ERROR_ALLOCATE_PAGE 2
+#define MAP_ERROR_ALLOCATE_POOL 3
 
 #define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
+
+#define CHECK_STATUS(status, value)\
+	do {if (EFI_ERROR(status)) {return ret = value;}} while (0)
 
 #define LOAD_KERNEL_CLEAN_UP()\
 	do {\
@@ -95,5 +104,10 @@
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
 		HALT();\
 	} while (0)
+
+struct index {
+	UINT16 value;
+	struct index *next;
+};
 
 #endif

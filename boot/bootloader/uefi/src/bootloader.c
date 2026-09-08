@@ -5,7 +5,7 @@ EFI_SYSTEM_TABLE *SysTab;
 EFI_STATUS status = EFI_SUCCESS;
 EFI_FILE_PROTOCOL *Volume = NULL;
 EFI_FILE_PROTOCOL *KernelFile = NULL;
-unsigned char *page_tables = NULL;
+UINT64 pml4[512];
 size_t efi_app_size = 0;
 size_t efi_app_start = 0;
 size_t efi_app_end = 0;
@@ -222,7 +222,67 @@ static int
 efi_map_page(size_t real_addr, size_t virt_addr)
 {
 	int ret = 0;
-	/* TODO : write new mapping algorithm */
+	real_addr = real_addr & 0xffffffffffff;
+	virt_addr = virt_addr & 0xffffffffffff;
+
+	struct index *last_pml4i;
+	unsigned int pml4_index = (unsigned int)(virt_addr >> 39);
+	efi_printf("pml4_index : %d \r\n", pml4_index);
+	if (!search_pml4i(pml4_index, &last_pml4i)) {
+		EFI_PHYSICAL_ADDRESS Memory;
+		status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
+		    EfiLoaderData, (UINT64) 1, &Memory);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_PAGE);
+		efi_memset((void *)Memory, 0, (size_t)PAGE_SIZE);
+		status = SysTab->BootServices->AllocatePool(EfiLoaderData,
+		    sizeof(struct index), (VOID **) &last_pml4i->next);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_POOL);
+		pml4[pml4_index] = Memory | PML4_ENTRY_FLAGS;
+		last_pml4i->next->value = (UINT16)pml4_index;
+		last_pml4i->next->next = NULL;
+	}
+	UINT64 *pdpt = (UINT64 *)(pml4[pml4_index] & 0xfffffffffffff000);
+
+	struct index *last_pdpti;
+	unsigned int pdpt_index = (unsigned int)((virt_addr >> 30) & 0x1ff);
+	efi_printf("pdpt_index : %d \r\n", pdpt_index);
+	if (!search_pdpti(pdpt_index, &last_pdpti)) {
+		EFI_PHYSICAL_ADDRESS Memory;
+		status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
+		    EfiLoaderData, (UINT64) 1, &Memory);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_PAGE);
+		efi_memset((void *)Memory, 0, (size_t)PAGE_SIZE);
+		status = SysTab->BootServices->AllocatePool(EfiLoaderData,
+		    sizeof(struct index), (VOID **) &last_pdpti->next);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_POOL);
+		pdpt[pdpt_index] = Memory | PDPT_ENTRY_FLAGS;
+		last_pdpti->next->value = (UINT16)pdpt_index;
+		last_pdpti->next->next = NULL;
+	}
+	UINT64 *pd = (UINT64 *)(pdpt[pdpt_index] & 0xfffffffffffff000);
+
+	struct index *last_pdi;
+	unsigned int pd_index = (unsigned int)((virt_addr >> 21) & 0x1ff);
+	efi_printf("pd_index : %d \r\n", pd_index);
+	if (!search_pdi(pd_index, &last_pdi)) {
+		EFI_PHYSICAL_ADDRESS Memory;
+		status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
+		    EfiLoaderData, (UINT64) 1, &Memory);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_PAGE);
+		efi_memset((void *)Memory, 0, (size_t)PAGE_SIZE);
+		status = SysTab->BootServices->AllocatePool(EfiLoaderData,
+		    sizeof(struct index), (VOID **) &last_pdi->next);
+		CHECK_STATUS(status, MAP_ERROR_ALLOCATE_POOL);
+		pd[pd_index] = Memory | PD_ENTRY_FLAGS;
+		last_pdi->next->value = (UINT16)pd_index;
+		last_pdi->next->next = NULL;
+	}
+	UINT64 *pt = (UINT64 *)(pd[pd_index] & 0xfffffffffffff000);
+
+	unsigned int pt_index = (unsigned int)((virt_addr >> 12) & 0x1ff);
+	efi_printf("pt_index : %d \r\n", pt_index);
+	pt[pt_index] = (UINT64)real_addr | PT_ENTRY_FLAGS;
+
 	return ret;
 }
 
@@ -234,10 +294,12 @@ efi_map_kernel(void)
 		ret = MAP_ERROR_PAGE_ALIGNED;
 	if (!PAGE_ALIGNED(virt_kernel_base))
 		ret = MAP_ERROR_PAGE_ALIGNED;
-	/* TODO */
 	for (size_t real = real_kernel_base, virt = virt_kernel_base;
 	    real < real_kernel_end; real += 4096, virt += 4096) {
-		efi_map_page(real, virt);
+		efi_printf("loop %z -> %z\r\n", real, virt);
+		ret = efi_map_page(real, virt);
+		if (ret != 0)
+			break;
 	}
 	return ret;
 }
@@ -249,7 +311,9 @@ efi_map_efi_app(void)
 	if (!PAGE_ALIGNED(efi_app_start))
 		ret = MAP_ERROR_PAGE_ALIGNED;
 	for (size_t i = efi_app_start; i < efi_app_end; i += 4096) {
-		efi_map_page(i, i);
+		ret = efi_map_page(i, i);
+		if (ret != 0)
+			break;
 	}
 	return ret;
 }
@@ -267,6 +331,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
+	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
 	CLEAR_SCREEN();
 
 	/* TODO validate efi_app_start to not to be in (kern_start, kern_end) */
@@ -278,7 +343,9 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		    ret, status);
 	efi_printf("DONE\r\n");
 
-	efi_printf("call efi_map_kernel()  ");
+	efi_printf("pml4 : %z\r\n", (size_t)pml4);
+	efi_printf("efi_app_start : %z\r\n", (size_t)efi_app_start);
+	efi_printf("call efi_map_kernel()  \r\n");
 	ret = efi_map_kernel();
 	if (ret != 0)
 		MAP_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
