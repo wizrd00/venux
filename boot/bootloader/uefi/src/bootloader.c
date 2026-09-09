@@ -6,7 +6,7 @@ EFI_STATUS status = EFI_SUCCESS;
 EFI_FILE_PROTOCOL *Volume = NULL;
 EFI_FILE_PROTOCOL *KernelFile = NULL;
 
-UINT64 pml4[512];
+UINT64 *pml4;
 UINT64 *pdpt0, *pdpt1;
 UINT64 *pd0, *pd1;
 UINT64 *pt0, *pt1;
@@ -320,6 +320,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	SysTab = SystemTable;
 	EFI_LOADED_IMAGE *LoadedImage = NULL;
 	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+	CLEAR_SCREEN();
 	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
 	    (VOID **) &LoadedImage);
 	if (EFI_ERROR(status))
@@ -329,8 +330,16 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
+
+	EFI_PHYSICAL_ADDRESS Memory;
+	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
+	    EfiLoaderData, (UINT64)1, &Memory);
+	if (EFI_ERROR(status))
+		FATAL_ERROR("AllocatePages() failed to allocate one page for"
+		"pml4 with status %d", status);
+	pml4 = (UINT64 *)Memory;
 	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
-	CLEAR_SCREEN();
+	efi_printf("pml4 : %z\r\n", (size_t)pml4);
 
 	/* TODO validate efi_app_start to not to be in (kern_start, kern_end) */
 
