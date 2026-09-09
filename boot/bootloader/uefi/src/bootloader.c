@@ -387,7 +387,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	MODIFY_SYSTAB();
 
-	efi_apply_tables();
+	efi_exit();
 
 	efi_halt();
 	return status;

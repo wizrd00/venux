@@ -4,10 +4,13 @@ extern pml4
 
 section .text
 
+efi_exit:
+
 efi_apply_tables:
 	mov rbx, [pml4]
 	mov cr3, rbx
 	mov rax, 0
-	ret
+	cli
+	hlt
 
-global efi_apply_tables
+global efi_exit
