@@ -225,22 +225,16 @@ efi_load_kernel(void)
 }
 
 static int
-efi_map_page(size_t real_addr, size_t virt_addr, UINT64 *pdpt, UINT64 *pd,
-    UINT64 *pt)
+efi_map_page(size_t real_addr, size_t virt_addr, UINT64 *pt)
 {
 	int ret = 0;
 	real_addr = real_addr & 0xffffffffffff;
 	virt_addr = virt_addr & 0xffffffffffff;
 
-	unsigned int pml4_index = (unsigned int)(virt_addr >> 39);
-	unsigned int pdpt_index = (unsigned int)((virt_addr >> 30) & 0x1ff);
-	unsigned int pd_index = (unsigned int)((virt_addr >> 21) & 0x1ff);
 	unsigned int pt_index = (unsigned int)((virt_addr >> 12) & 0x1ff);
 
-	pml4[pml4_index] = (UINT64)pdpt | PML4_ENTRY_FLAGS;
-	pdpt[pdpt_index] = (UINT64)pd | PDPT_ENTRY_FLAGS;
-	pd[pd_index] = (UINT64)pt | PD_ENTRY_FLAGS;
 	pt[pt_index] = (UINT64)real_addr | PT_ENTRY_FLAGS;
+	efi_printf("pt[pt_index] = %z\r\n", pt[pt_index]);
 
 	return ret;
 }
@@ -266,9 +260,19 @@ efi_map_kernel(void)
 	pd0 = pdpt0 + 512;
 	pt0 = pd0 + 512;
 
+	int pml4_index = (int)(virt_kernel_start >> 39);
+	int pdpt_index = (int)((virt_kernel_start >> 30) & 0x1ff);
+	int pd_index = (int)((virt_kernel_start >> 21) & 0x1ff);
+	pml4[pml4_index] = (UINT64)pdpt0 | PML4_ENTRY_FLAGS;
+	pdpt0[pdpt_index] = (UINT64)pd0 | PDPT_ENTRY_FLAGS;
+	pd0[pd_index] = (UINT64)pt0 | PD_ENTRY_FLAGS;
+	efi_printf("pml4[pml4_index] = %z\r\n", pml4[pml4_index]);
+	efi_printf("pdpt0[pdpt_index] = %z\r\n", pdpt0[pdpt_index]);
+	efi_printf("pd0[pd_index] = %z\r\n", pd0[pd_index]);
+
 	for (size_t real = real_kernel_start, virt = virt_kernel_start;
 	    real < real_kernel_end; real += 4096, virt += 4096)
-		efi_map_page(real, virt, pdpt0, pd0, pt0);
+		efi_map_page(real, virt, pt0);
 
 	return ret;
 }
@@ -292,8 +296,19 @@ efi_map_efi_app(void)
 	pd1 = pdpt1 + 512;
 	pt1 = pd1 + 512;
 
+	efi_printf("efi_start %z\r\n", efi_app_start);
+	int pml4_index = (int)(efi_app_start >> 39);
+	int pdpt_index = (int)((efi_app_start >> 30) & 0x1ff);
+	int pd_index = (int)((efi_app_start >> 21) & 0x1ff);
+	pml4[pml4_index] = (UINT64)pdpt1 | PML4_ENTRY_FLAGS;
+	pdpt1[pdpt_index] = (UINT64)pd1 | PDPT_ENTRY_FLAGS;
+	pd1[pd_index] = (UINT64)pt1 | PD_ENTRY_FLAGS;
+	efi_printf("pml4[pml4_index] = %z\r\n", pml4[pml4_index]);
+	efi_printf("pdpt1[pdpt_index] = %z\r\n", pdpt1[pdpt_index]);
+	efi_printf("pd1[pd_index] = %z\r\n", pd1[pd_index]);
+
 	for (size_t i = efi_app_start; i < efi_app_end; i += 4096)
-		efi_map_page(i, i, pdpt1, pd1, pt1);
+		efi_map_page(i, i, pt1);
 	return ret;
 }
 
@@ -307,6 +322,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
 	    (VOID **) &LoadedImage);
+	if (EFI_ERROR(status))
+		FATAL_ERROR("HandleProtocol() failed to gather information"
+		    " about the image with status %d", status);
+
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
