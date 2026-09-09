@@ -10,7 +10,7 @@ _kernel_stack_end = _kernel_stack_start + _kernel_stack_size;
 
 PHDRS
 {
-	kern PT_LOAD PHDRS;
+	kern PT_LOAD;
 }
 
 SECTIONS
