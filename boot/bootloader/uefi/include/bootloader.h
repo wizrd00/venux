@@ -12,7 +12,7 @@
 #include "globals.h"
 #include "efi_stdio.h"
 #include "efi_string.h"
-#include "pagetables.h"
+#include "exit.h"
 #include "halt.h"
 #include "elf.h"
 
@@ -41,15 +41,6 @@
 #define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
-
-#define CHECK_STATUS(status, value)\
-	do {if (EFI_ERROR(status)) {return ret = value;}} while (0)
-
-#define LOAD_KERNEL_CLEAN_UP()\
-	do {\
-		KernelFile->Close(KernelFile);\
-		Volume->Close(Volume);\
-	} while (0);
 
 #define MODIFY_SYSTAB()\
 	do {\

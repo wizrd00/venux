@@ -31,17 +31,21 @@ efi_open_kernel_file(void)
 	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
 	    (VOID **) &LoadedImage);
-	CHECK_STATUS(status, LOAD_ERROR_HANDLE_PROTOCOL);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *FileSystem = NULL;
 	EFI_GUID FileSystemGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 	status = SysTab->BootServices->HandleProtocol(LoadedImage->DeviceHandle,
 	    &FileSystemGuid, (VOID **) &FileSystem);
-	CHECK_STATUS(status, LOAD_ERROR_HANDLE_PROTOCOL);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
 	status = FileSystem->OpenVolume(FileSystem, &Volume);
-	CHECK_STATUS(status, LOAD_ERROR_OPEN_VOLUME);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_OPEN_VOLUME;
 	status = Volume->Open(Volume, &KernelFile, KERNEL_NAME,
 	    EFI_FILE_MODE_READ, (UINT64)0);
-	CHECK_STATUS(status, LOAD_ERROR_OPEN_FILE);
+	if (EFI_ERROR(status))
+		return ret = LOAD_ERROR_OPEN_FILE;
 	return ret;
 }
 
@@ -68,45 +72,39 @@ efi_load_kernel(void)
 	unsigned char buffer[BUFFER_SIZE];
 	ret = efi_open_kernel_file();
 	if (ret != 0)
-		return ret;
-
+		goto out;
 	struct boot_elf64_ehdr ehdr;
 	size_t ehdr_size = sizeof(struct boot_elf64_ehdr);
 	status = KernelFile->Read(KernelFile, (UINTN *)&ehdr_size,
 	    (VOID *)&ehdr);
 	if (EFI_ERROR(status)) {
-		LOAD_KERNEL_CLEAN_UP();
-		return ret = LOAD_ERROR_READ_FILE;
+		ret = LOAD_ERROR_READ_FILE;
+		goto out_close;
 	}
-
 	ret = efi_validate_elf(&ehdr);
-	if (ret != 0) {
-		LOAD_KERNEL_CLEAN_UP();
-		return ret;
-	}
-
+	if (ret != 0)
+		goto out_close;
 	struct boot_elf64_phdr phdr;
 	size_t phdr_size = sizeof(struct boot_elf64_phdr);
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
-		LOAD_KERNEL_CLEAN_UP();
-		return ret = LOAD_ERROR_SEEK_FILE;
+		ret = LOAD_ERROR_SEEK_FILE;
+		goto out_close;
 	}
-
 	bool valid_entry = false;
 	UINT64 start = 0, end = 0;
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
 		if (EFI_ERROR(status)) {
-			LOAD_KERNEL_CLEAN_UP();
-			return ret = LOAD_ERROR_READ_FILE;
+			ret = LOAD_ERROR_READ_FILE;
+			goto out_close;
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
 		if (phdr.p_memsz < phdr.p_filesz) {
-			LOAD_KERNEL_CLEAN_UP();
-			return ret = LOAD_ERROR_INVALID_PHDR;
+			ret = LOAD_ERROR_INVALID_PHDR;
+			goto out_close;
 		}
 		if ((ehdr.e_entry >= phdr.p_vaddr) &&
 		    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
@@ -123,69 +121,55 @@ efi_load_kernel(void)
 	virt_kernel_base = virt_kernel_start - STACK_SIZE;
 	virt_kernel_end = (size_t)(end);
 	kernel_size = virt_kernel_end - virt_kernel_start;
-
 	if (kernel_size == 0) {
-		LOAD_KERNEL_CLEAN_UP();
 		return ret = LOAD_ERROR_NO_PTLOAD;
+		goto out_close;
 	}
-
 	if (!valid_entry) {
-		LOAD_KERNEL_CLEAN_UP();
-		return ret = LOAD_ERROR_INVALID_ENTRY;
+		ret = LOAD_ERROR_INVALID_ENTRY;
+		goto out_close;
 	}
-
 	EFI_PHYSICAL_ADDRESS Memory;
 	UINTN Pages = (UINTN)((kernel_size + STACK_SIZE) / 4096 + 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
-		LOAD_KERNEL_CLEAN_UP();
-		return ret = LOAD_ERROR_ALLOCATE_PAGE;
+		ret = LOAD_ERROR_ALLOCATE_PAGE;
+		goto out_close;
 	}
 	real_kernel_base = (size_t)Memory;
 	real_kernel_start = real_kernel_base + STACK_SIZE;
 	real_kernel_end = real_kernel_start + kernel_size;
-
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
-		LOAD_KERNEL_CLEAN_UP();
-		SysTab->BootServices->FreePages(Memory, Pages);
-		return ret = LOAD_ERROR_SEEK_FILE;
+		ret = LOAD_ERROR_SEEK_FILE;
+		goto out_free;
 	}
-
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
 		if (EFI_ERROR(status)) {
-			LOAD_KERNEL_CLEAN_UP();
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_READ_FILE;
+			ret = LOAD_ERROR_READ_FILE;
+			goto out_free;
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
-
 		if (((size_t)phdr.p_vaddr < virt_kernel_start) ||
 		    ((size_t)phdr.p_vaddr >= virt_kernel_start + kernel_size)) {
-			LOAD_KERNEL_CLEAN_UP();
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_INVALID_PHDR;
+			ret = LOAD_ERROR_INVALID_PHDR;
+			goto out_free;
 		}
-
 		UINT64 pos;
 		status = KernelFile->GetPosition(KernelFile, &pos);
 		if (EFI_ERROR(status)) {
-			LOAD_KERNEL_CLEAN_UP();
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_SEEK_FILE;
+			ret = LOAD_ERROR_SEEK_FILE;
+			goto out_free;
 		}
-
 		status = KernelFile->SetPosition(KernelFile, phdr.p_offset);
 		if (EFI_ERROR(status)) {
-			LOAD_KERNEL_CLEAN_UP();
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_SEEK_FILE;
+			ret = LOAD_ERROR_SEEK_FILE;
+			goto out_free;
 		}
-
 		size_t filesz = (size_t)phdr.p_filesz;
 		size_t gapsz = (size_t)phdr.p_memsz - filesz;
 		size_t addr = real_kernel_start +
@@ -196,25 +180,27 @@ efi_load_kernel(void)
 			status = KernelFile->Read(KernelFile, &readsz,
 			    (VOID *)buffer);
 			if (EFI_ERROR(status)) {
-				LOAD_KERNEL_CLEAN_UP();
-				SysTab->BootServices->FreePages(Memory, Pages);
-				return ret = LOAD_ERROR_READ_FILE;
+				ret = LOAD_ERROR_READ_FILE;
+				goto out_free;
 			}
 			efi_memcpy((void *)addr, (void *)buffer, readsz);
 			filesz -= readsz;
 			addr += readsz;
 		}
 		efi_memset((void *)addr, 0, gapsz);
-
 		status = KernelFile->SetPosition(KernelFile, pos);
 		if (EFI_ERROR(status)) {
-			LOAD_KERNEL_CLEAN_UP();
-			SysTab->BootServices->FreePages(Memory, Pages);
-			return ret = LOAD_ERROR_SEEK_FILE;
+			ret = LOAD_ERROR_SEEK_FILE;
+			goto out_free;
 		}
 	}
-	LOAD_KERNEL_CLEAN_UP();
-	return ret;
+	out_free :
+		SysTab->BootServices->FreePages(Memory, Pages);
+	out_close :
+		KernelFile->Close(KernelFile);
+		Volume->Close(Volume);
+	out :
+		return ret;
 }
 
 static int
@@ -223,12 +209,8 @@ efi_map_page(size_t real_addr, size_t virt_addr, UINT64 *pt)
 	int ret = 0;
 	real_addr = real_addr & 0xffffffffffff;
 	virt_addr = virt_addr & 0xffffffffffff;
-
 	unsigned int pt_index = (unsigned int)((virt_addr >> 12) & 0x1ff);
-
 	pt[pt_index] = (UINT64)real_addr | PT_ENTRY_FLAGS;
-	efi_printf("pt[pt_index] = %z\r\n", pt[pt_index]);
-
 	return ret;
 }
 
@@ -240,7 +222,6 @@ efi_map_kernel(void)
 		return ret = MAP_ERROR_PAGE_ALIGNED;
 	if (!PAGE_ALIGNED(virt_kernel_base))
 		return ret = MAP_ERROR_PAGE_ALIGNED;
-
 	EFI_PHYSICAL_ADDRESS Memory;
 	UINT64 Pages = (UINT64)(PAGE_TABLES_COUNT - 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
@@ -248,25 +229,18 @@ efi_map_kernel(void)
 	if (EFI_ERROR(status))
 		return ret = MAP_ERROR_ALLOCATE_PAGE;
 	efi_memset((void *)Memory, 0, (size_t)Pages * 4096);
-
 	pdpt0 = (UINT64 *)Memory;
 	pd0 = pdpt0 + 512;
 	pt0 = pd0 + 512;
-
 	int pml4_index = (int)(virt_kernel_start >> 39);
 	int pdpt_index = (int)((virt_kernel_start >> 30) & 0x1ff);
 	int pd_index = (int)((virt_kernel_start >> 21) & 0x1ff);
 	pml4[pml4_index] = (UINT64)pdpt0 | PML4_ENTRY_FLAGS;
 	pdpt0[pdpt_index] = (UINT64)pd0 | PDPT_ENTRY_FLAGS;
 	pd0[pd_index] = (UINT64)pt0 | PD_ENTRY_FLAGS;
-	efi_printf("pml4[pml4_index] = %z\r\n", pml4[pml4_index]);
-	efi_printf("pdpt0[pdpt_index] = %z\r\n", pdpt0[pdpt_index]);
-	efi_printf("pd0[pd_index] = %z\r\n", pd0[pd_index]);
-
 	for (size_t real = real_kernel_start, virt = virt_kernel_start;
 	    real < real_kernel_end; real += 4096, virt += 4096)
 		efi_map_page(real, virt, pt0);
-
 	return ret;
 }
 
@@ -276,7 +250,6 @@ efi_map_efi_app(void)
 	int ret = 0;
 	if (!PAGE_ALIGNED(efi_app_start))
 		return ret = MAP_ERROR_PAGE_ALIGNED;
-
 	EFI_PHYSICAL_ADDRESS Memory;
 	UINT64 Pages = (UINT64)(PAGE_TABLES_COUNT - 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
@@ -284,22 +257,15 @@ efi_map_efi_app(void)
 	if (EFI_ERROR(status))
 		return ret = MAP_ERROR_ALLOCATE_PAGE;
 	efi_memset((void *)Memory, 0, (size_t)Pages * 4096);
-
 	pdpt1 = (UINT64 *)Memory;
 	pd1 = pdpt1 + 512;
 	pt1 = pd1 + 512;
-
-	efi_printf("efi_start %z\r\n", efi_app_start);
 	int pml4_index = (int)(efi_app_start >> 39);
 	int pdpt_index = (int)((efi_app_start >> 30) & 0x1ff);
 	int pd_index = (int)((efi_app_start >> 21) & 0x1ff);
 	pml4[pml4_index] = (UINT64)pdpt1 | PML4_ENTRY_FLAGS;
 	pdpt1[pdpt_index] = (UINT64)pd1 | PDPT_ENTRY_FLAGS;
 	pd1[pd_index] = (UINT64)pt1 | PD_ENTRY_FLAGS;
-	efi_printf("pml4[pml4_index] = %z\r\n", pml4[pml4_index]);
-	efi_printf("pdpt1[pdpt_index] = %z\r\n", pdpt1[pdpt_index]);
-	efi_printf("pd1[pd_index] = %z\r\n", pd1[pd_index]);
-
 	for (size_t i = efi_app_start; i < efi_app_end; i += 4096)
 		efi_map_page(i, i, pt1);
 	return ret;
@@ -319,11 +285,9 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (EFI_ERROR(status))
 		FATAL_ERROR("HandleProtocol() failed to gather information"
 		    " about the image with status %d", status);
-
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
-
 	EFI_PHYSICAL_ADDRESS Memory;
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, (UINT64)1, &Memory);
@@ -332,29 +296,21 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		"pml4 with status %d", status);
 	pml4 = (UINT64 *)Memory;
 	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
-	efi_printf("pml4 : %z\r\n", (size_t)pml4);
 
 	/* TODO validate efi_app_start to not to be in (kern_start, kern_end) */
 
-	efi_printf("call efi_load_kernel()\r\n");
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-
-	/*
-	efi_printf("call efi_map_kernel()\r\n");
 	ret = efi_map_kernel();
 	if (ret != 0)
 		MAP_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-	*/
 	ret = efi_map_efi_app();
 	if (ret != 0)
 		MAP_ERROR("efi_map_efi_app() returned %d with EFI_STATUS %d",
 		    ret, status);
-
-	efi_printf("getting memory map and calling ExitBootServices()\r\n");
 	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
 	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
 	UINT32 DescriptorVersion;
@@ -363,7 +319,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (status != EFI_BUFFER_TOO_SMALL)
 		FATAL_ERROR("GetMemoryMap() must return EFI_BUFFER_TOO_SMALL"
 		    "but returned status %d", status);
-	/* TODO : allocate enough buffer to fit kernel args */
+	/* TODO allocate enough buffer to fit kernel args */
 	MemoryMapSize += 2 * DescriptorSize;
 	status = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    MemoryMapSize, (VOID **) &MemoryMap);
@@ -373,15 +329,11 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 	if (EFI_ERROR(status))
 		FATAL_ERROR("GetMemoryMap() failed with status %d", status);
-
 	status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
 	if (EFI_ERROR(status))
 		FATAL_ERROR("ExitBootServices() failed with status %d", status);
-
 	MODIFY_SYSTAB();
-
 	efi_exit();
-
 	efi_halt();
 	return status;
 }

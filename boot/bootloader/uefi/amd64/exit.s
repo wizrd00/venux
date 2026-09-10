@@ -12,5 +12,6 @@ efi_apply_tables:
 	hlt
 
 efi_exit:
+	jmp efi_apply_tables
 
 global efi_exit
