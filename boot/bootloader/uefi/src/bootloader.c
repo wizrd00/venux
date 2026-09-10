@@ -296,9 +296,9 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		"pml4 with status %d", status);
 	pml4 = (UINT64 *)Memory;
 	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
-
-	/* TODO validate efi_app_start to not to be in (kern_start, kern_end) */
-
+	if (virt_kernel_start <= efi_app_end)
+		FATAL_ERROR("kernel virtual address starts before"
+		    " EFI application virtual address ends");
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
