@@ -31,24 +31,17 @@ efi_open_kernel_file(void)
 	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
 	    (VOID **) &LoadedImage);
-	if (EFI_ERROR(status))
-		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
-
+	CHECK_STATUS(status, LOAD_ERROR_HANDLE_PROTOCOL);
 	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *FileSystem = NULL;
 	EFI_GUID FileSystemGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 	status = SysTab->BootServices->HandleProtocol(LoadedImage->DeviceHandle,
 	    &FileSystemGuid, (VOID **) &FileSystem);
-	if (EFI_ERROR(status))
-		return ret = LOAD_ERROR_HANDLE_PROTOCOL;
-
+	CHECK_STATUS(status, LOAD_ERROR_HANDLE_PROTOCOL);
 	status = FileSystem->OpenVolume(FileSystem, &Volume);
-	if (EFI_ERROR(status))
-		return ret = LOAD_ERROR_OPEN_VOLUME;
-	
+	CHECK_STATUS(status, LOAD_ERROR_OPEN_VOLUME);
 	status = Volume->Open(Volume, &KernelFile, KERNEL_NAME,
 	    EFI_FILE_MODE_READ, (UINT64)0);
-	if (EFI_ERROR(status))
-		return ret = LOAD_ERROR_OPEN_FILE;
+	CHECK_STATUS(status, LOAD_ERROR_OPEN_FILE);
 	return ret;
 }
 
