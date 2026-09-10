@@ -209,7 +209,7 @@ efi_map_page(size_t real_addr, size_t virt_addr, UINT64 *pt)
 	int ret = 0;
 	real_addr = real_addr & 0xffffffffffff;
 	virt_addr = virt_addr & 0xffffffffffff;
-	unsigned int pt_index = (unsigned int)((virt_addr >> 12) & 0x1ff);
+	int pt_index = (int)((virt_addr >> 12) & 0x1ff);
 	pt[pt_index] = (UINT64)real_addr | PT_ENTRY_FLAGS;
 	return ret;
 }
@@ -232,7 +232,7 @@ efi_map_kernel(void)
 	pdpt0 = (UINT64 *)Memory;
 	pd0 = pdpt0 + 512;
 	pt0 = pd0 + 512;
-	int pml4_index = (int)(virt_kernel_start >> 39);
+	int pml4_index = (int)((virt_kernel_start >> 39) & 0x1ff);
 	int pdpt_index = (int)((virt_kernel_start >> 30) & 0x1ff);
 	int pd_index = (int)((virt_kernel_start >> 21) & 0x1ff);
 	pml4[pml4_index] = (UINT64)pdpt0 | PML4_ENTRY_FLAGS;
