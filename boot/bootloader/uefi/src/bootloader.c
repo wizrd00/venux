@@ -176,7 +176,6 @@ efi_load_kernel(void)
 		size_t gapsz = (size_t)phdr.p_memsz - filesz;
 		size_t addr = real_kernel_start +
 		    ((size_t)phdr.p_vaddr - virt_kernel_start);
-		efi_printf("addr %z\r\n", addr);
 		while (filesz > 0) {
 			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
 			    filesz : BUFFER_SIZE);
@@ -237,9 +236,6 @@ efi_map_kernel(void)
 	pdpt0 = (UINT64 *)Memory;
 	pd0 = pdpt0 + 512;
 	pt0 = pd0 + 512;
-	efi_printf("pdpt0 %z\r\n", (size_t)pdpt0);
-	efi_printf("pd0 %z\r\n", (size_t)pd0);
-	efi_printf("pt0 %z\r\n", (size_t)pt0);
 	int pml4_index = (int)((virt_kernel_base >> 39) & 0x1ff);
 	int pdpt_index = (int)((virt_kernel_base >> 30) & 0x1ff);
 	int pd_index = (int)((virt_kernel_base >> 21) & 0x1ff);
@@ -269,9 +265,6 @@ efi_map_efi_app(void)
 	pdpt1 = (UINT64 *)Memory;
 	pd1 = pdpt1 + 512;
 	pt1 = pd1 + 512;
-	efi_printf("pdpt1 %z\r\n", (size_t)pdpt1);
-	efi_printf("pd1 %z\r\n", (size_t)pd1);
-	efi_printf("pt1 %z\r\n", (size_t)pt1);
 	int pml4_index = (int)(efi_app_start >> 39);
 	int pdpt_index = (int)((efi_app_start >> 30) & 0x1ff);
 	int pd_index = (int)((efi_app_start >> 21) & 0x1ff);
@@ -300,9 +293,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
-	efi_printf("efi_app_size %z\r\n", efi_app_size);
-	efi_printf("efi_app_start %z\r\n", efi_app_start);
-	efi_printf("efi_app_end %z\r\n", efi_app_end);
 	EFI_PHYSICAL_ADDRESS Memory;
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, (UINT64)1, &Memory);
@@ -310,19 +300,11 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		FATAL_ERROR("AllocatePages() failed to allocate one page for"
 		"pml4 with status %d", status);
 	pml4 = (UINT64 *)Memory;
-	efi_printf("pml4 %z\r\n", (size_t)pml4);
 	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-	efi_printf("kernel size %z\r\n", kernel_size);
-	efi_printf("real_kernel_base %z\r\n", real_kernel_base);
-	efi_printf("virt_kernel_base %z\r\n", virt_kernel_base);
-	efi_printf("real_kernel_start %z\r\n", real_kernel_start);
-	efi_printf("virt_kernel_start %z\r\n", virt_kernel_start);
-	efi_printf("real_kernel_end %z\r\n", real_kernel_end);
-	efi_printf("virt_kernel_end %z\r\n", virt_kernel_end);
 	if (virt_kernel_base <= efi_app_end)
 		FATAL_ERROR("kernel base virtual address starts before"
 		    " EFI application virtual address ends");
