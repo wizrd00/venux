@@ -1,17 +1,16 @@
 BITS 64
 
 extern pml4
+extern kernel_entry
+extern efi_halt
 
 section .text
 
-efi_apply_tables:
-	mov rbx, [pml4]
-	mov cr3, rbx
-	mov rax, 0
+efi_leave:
 	cli
-	hlt
-
-efi_exit:
-	jmp efi_apply_tables
+	mov rax, [pml4]
+	mov cr3, rax
+	jmp [kernel_entry]
+	jmp efi_halt
 
 global efi_leave

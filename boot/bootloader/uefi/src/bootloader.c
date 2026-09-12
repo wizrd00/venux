@@ -16,6 +16,7 @@ size_t efi_app_start = 0;
 size_t efi_app_end = 0;
 
 size_t kernel_size = 0;
+size_t kernel_entry = 0;
 size_t virt_kernel_base = 0;
 size_t virt_kernel_start = 0;
 size_t virt_kernel_end = 0;
@@ -81,6 +82,7 @@ efi_load_kernel(void)
 		ret = LOAD_ERROR_READ_FILE;
 		goto out_close;
 	}
+	kernel_entry = (size_t)ehdr.e_entry;
 	ret = efi_validate_elf(&ehdr);
 	if (ret != 0)
 		goto out_close;
@@ -333,7 +335,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (EFI_ERROR(status))
 		FATAL_ERROR("ExitBootServices() failed with status %d", status);
 	MODIFY_SYSTAB();
-	efi_exit();
+	efi_leave();
 	efi_halt();
 	return status;
 }

@@ -1,5 +1,5 @@
 STARTUP(bin/init.s.o)
-ENTRY(_init)
+ENTRY(kern_init)
 
 _kernel_base = 0xffffffff80000000;
 _kernel_gap = 1M;

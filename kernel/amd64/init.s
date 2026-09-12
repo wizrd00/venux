@@ -10,7 +10,7 @@ extern _kernel_stack_start
 extern _kernel_stack_end
 extern kern_main
 
-global _init
+global kern_init
 
 section .text
 
@@ -22,7 +22,7 @@ _panic:
 	cli
 	jmp _halt
 
-_init:
+kern_init:
 	cli
 	mov rax, _kernel_base
 	add rax, _kernel_gap
