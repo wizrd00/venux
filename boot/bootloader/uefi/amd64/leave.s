@@ -11,6 +11,7 @@ efi_leave:
 	mov rax, [pml4]
 	mov cr3, rax
 	mov rbx, [kernel_entry]
+	jmp rbx
 	jmp efi_halt
 
 global efi_leave
