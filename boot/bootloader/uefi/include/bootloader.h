@@ -12,7 +12,7 @@
 #include "globals.h"
 #include "efi_stdio.h"
 #include "efi_string.h"
-#include "exit.h"
+#include "leave.h"
 #include "halt.h"
 #include "elf.h"
 
@@ -95,10 +95,5 @@
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
 		HALT();\
 	} while (0)
-
-struct index {
-	UINT16 value;
-	struct index *next;
-};
 
 #endif

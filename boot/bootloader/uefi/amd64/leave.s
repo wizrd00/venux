@@ -14,4 +14,4 @@ efi_apply_tables:
 efi_exit:
 	jmp efi_apply_tables
 
-global efi_exit
+global efi_leave
