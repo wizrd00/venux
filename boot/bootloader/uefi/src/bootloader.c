@@ -234,13 +234,13 @@ efi_map_kernel(void)
 	pdpt0 = (UINT64 *)Memory;
 	pd0 = pdpt0 + 512;
 	pt0 = pd0 + 512;
-	int pml4_index = (int)((virt_kernel_start >> 39) & 0x1ff);
-	int pdpt_index = (int)((virt_kernel_start >> 30) & 0x1ff);
-	int pd_index = (int)((virt_kernel_start >> 21) & 0x1ff);
+	int pml4_index = (int)((virt_kernel_base >> 39) & 0x1ff);
+	int pdpt_index = (int)((virt_kernel_base >> 30) & 0x1ff);
+	int pd_index = (int)((virt_kernel_base >> 21) & 0x1ff);
 	pml4[pml4_index] = (UINT64)pdpt0 | PML4_ENTRY_FLAGS;
 	pdpt0[pdpt_index] = (UINT64)pd0 | PDPT_ENTRY_FLAGS;
 	pd0[pd_index] = (UINT64)pt0 | PD_ENTRY_FLAGS;
-	for (size_t real = real_kernel_start, virt = virt_kernel_start;
+	for (size_t real = real_kernel_base, virt = virt_kernel_base;
 	    real < real_kernel_end; real += 4096, virt += 4096)
 		efi_map_page(real, virt, pt0);
 	return ret;
@@ -302,8 +302,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-	if (virt_kernel_start <= efi_app_end)
-		FATAL_ERROR("kernel virtual address starts before"
+	if (virt_kernel_base <= efi_app_end)
+		FATAL_ERROR("kernel base virtual address starts before"
 		    " EFI application virtual address ends");
 	ret = efi_map_kernel();
 	if (ret != 0)
