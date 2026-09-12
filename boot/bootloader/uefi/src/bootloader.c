@@ -157,7 +157,7 @@ efi_load_kernel(void)
 		if (phdr.p_type != PT_LOAD)
 			continue;
 		if (((size_t)phdr.p_vaddr < virt_kernel_start) ||
-		    ((size_t)phdr.p_vaddr >= virt_kernel_start + kernel_size)) {
+		    ((size_t)phdr.p_vaddr >= virt_kernel_end)) {
 			ret = LOAD_ERROR_INVALID_PHDR;
 			goto out_free;
 		}
@@ -298,13 +298,13 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		"pml4 with status %d", status);
 	pml4 = (UINT64 *)Memory;
 	efi_memset((void *)pml4, 0, (size_t)PAGE_SIZE);
-	if (virt_kernel_start <= efi_app_end)
-		FATAL_ERROR("kernel virtual address starts before"
-		    " EFI application virtual address ends");
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
+	if (virt_kernel_start <= efi_app_end)
+		FATAL_ERROR("kernel virtual address starts before"
+		    " EFI application virtual address ends");
 	ret = efi_map_kernel();
 	if (ret != 0)
 		MAP_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
