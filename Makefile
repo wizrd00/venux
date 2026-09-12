@@ -31,7 +31,7 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-Wall \
 	-Wextra \
 	-Wno-unused-function \
-	-Wno-unused-variable
+	-Wno-unused-label
 
 ALL_CFLAGS :=
 
