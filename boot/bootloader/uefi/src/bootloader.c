@@ -124,7 +124,7 @@ efi_load_kernel(void)
 	virt_kernel_end = (size_t)(end);
 	kernel_size = virt_kernel_end - virt_kernel_start;
 	if (kernel_size == 0) {
-		return ret = LOAD_ERROR_NO_PTLOAD;
+		ret = LOAD_ERROR_NO_PTLOAD;
 		goto out_close;
 	}
 	if (!valid_entry) {
@@ -225,15 +225,13 @@ static int
 efi_addto_pt(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pt)
 {
 	int ret = 0;
-	size_t count = (virt_end - virt_start) / 0x1000 +
-	    (((virt_end - virt_start) % 0x1000 == 0) ? 0 : 1);
-	for (size_t i = 0; i < count; i++) {
-		size_t new_real_start = real_start + i * 0x1000;
-		size_t new_virt_start = virt_start + i * 0x1000;
-		int pti = (int)((new_virt_start >> 12) & 0x1ff);
+	while (virt_start < virt_end) {
+		int pti = (int)((virt_start >> 12) & 0x1ff);
 		if (ENTRY_PRESENT(pt[pti]))
-			return ret = MAP_ERROR_PAGE_MAPPED_ALREADY;
-		pt[pti] = (UINT64)(new_real_start | ENTRY_FLAGS);
+			return ret = MAP_ERROR_PAGE_PRESENT;
+		pt[pti] = (UINT64)(real_start | ENTRY_FLAGS);
+		virt_start += 0x1000;
+		real_start += 0x1000;
 	}
 	return ret;
 }
@@ -242,24 +240,21 @@ static int
 efi_addto_pd(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pd)
 {
 	int ret = 0;
-	size_t count = (virt_end - virt_start) / 0x200000 +
-	    (((virt_end - virt_start) % 0x200000 == 0) ? 0 : 1);
-	for (size_t i = 0; i < count; i++) {
-		size_t new_real_start = real_start + i * 0x200000;
-		size_t new_virt_start = virt_start + i * 0x200000;
-		size_t new_virt_end = (new_virt_start + 0x200000 >= virt_end) ?
-		    virt_end : new_virt_start + 0x200000;
-		int pdi = (int)((new_virt_start >> 21) & 0x1ff);
+	while (virt_start < virt_end) {
+		size_t max_end = (virt_start | 0x1fffff);
+		size_t chunk_end = (max_end > virt_end) ? virt_end : max_end;
+		int pdi = (int)((virt_start >> 21) & 0x1ff);
 		if (!ENTRY_PRESENT(pd[pdi])) {
 			ret = efi_alloc_table(pd + pdi);
 			if (ret != 0)
 				return ret;
 		}
 		UINT64 *pt = (UINT64 *)(pd[pdi] & 0xfffffffffffff000);
-		ret = efi_addto_pt(new_real_start, new_virt_start, new_virt_end,
-		    pt);
+		ret = efi_addto_pt(real_start, virt_start, chunk_end, pt);
 		if (ret != 0)
 			return ret;
+		virt_start += chunk_end - virt_start;
+		real_start += chunk_end - virt_start;
 	}
 	return ret;
 }
