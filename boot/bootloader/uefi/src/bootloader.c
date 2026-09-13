@@ -94,6 +94,7 @@ efi_load_kernel(void)
 		goto out_close;
 	}
 	bool valid_entry = false;
+	bool first_phdr = true;
 	UINT64 start = 0, end = 0;
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
@@ -111,9 +112,10 @@ efi_load_kernel(void)
 		if ((ehdr.e_entry >= phdr.p_vaddr) &&
 		    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
 			valid_entry = true;
-		if (i == 0) {
+		if (first_phdr) {
 			start = phdr.p_vaddr;
 			end = start + phdr.p_memsz;
+			first_phdr = false;
 		} else {
 			start = (start < phdr.p_vaddr) ? start : phdr.p_vaddr;
 			end  = (end > phdr.p_vaddr) ? end : phdr.p_vaddr;
