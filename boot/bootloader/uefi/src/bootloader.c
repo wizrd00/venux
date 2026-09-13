@@ -115,7 +115,8 @@ efi_load_kernel(void)
 			first_phdr = false;
 		} else {
 			start = (start < phdr.p_vaddr) ? start : phdr.p_vaddr;
-			end  = (end > phdr.p_vaddr) ? end : phdr.p_vaddr;
+			end  = (end > phdr.p_vaddr + phdr.p_memsz) ?
+			    end : phdr.p_vaddr + phdr.p_memsz;
 		}
 	}
 	virt_kernel_start = (size_t)(start);
@@ -213,6 +214,8 @@ efi_alloc_table(UINT64 *table)
 	EFI_PHYSICAL_ADDRESS Memory;
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, (UINT64)1, &Memory);
+	if (EFI_ERROR(status))
+		return ret = MAP_ERROR_ALLOCATE_PAGE;
 	efi_memset((void *)Memory, 0, (size_t)PAGE_SIZE);
 	*table = (UINT64)(Memory | ENTRY_FLAGS);
 	return ret;
@@ -222,7 +225,9 @@ static int
 efi_addto_pt(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pt)
 {
 	int ret = 0;
-	for (size_t i = 0; i < ((virt_end - virt_start) / 0x1000) + 1; i++) {
+	size_t count = (virt_end - virt_start) / 0x1000 +
+	    (((virt_end - virt_start) % 0x1000 == 0) ? 0 : 1);
+	for (size_t i = 0; i < count; i++) {
 		size_t new_real_start = real_start + i * 0x1000;
 		size_t new_virt_start = virt_start + i * 0x1000;
 		int pti = (int)((new_virt_start >> 12) & 0x1ff);
@@ -237,7 +242,9 @@ static int
 efi_addto_pd(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pd)
 {
 	int ret = 0;
-	for (size_t i = 0; i < ((virt_end - virt_start) / 0x200000) + 1; i++) {
+	size_t count = (virt_end - virt_start) / 0x200000 +
+	    (((virt_end - virt_start) % 0x200000 == 0) ? 0 : 1);
+	for (size_t i = 0; i < count; i++) {
 		size_t new_real_start = real_start + i * 0x200000;
 		size_t new_virt_start = virt_start + i * 0x200000;
 		size_t new_virt_end = (new_virt_start + 0x200000 >= virt_end) ?
