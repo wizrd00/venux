@@ -16,10 +16,7 @@
 #include "halt.h"
 #include "elf.h"
 
-#define PML4_ENTRY_FLAGS 0x003
-#define PDPT_ENTRY_FLAGS 0x003
-#define PD_ENTRY_FLAGS 0x003
-#define PT_ENTRY_FLAGS 0x003
+#define ENTRY_FLAGS 0x003
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
 #define LOAD_ERROR_OPEN_VOLUME 2
@@ -37,8 +34,11 @@
 #define MAP_ERROR_PAGE_ALIGNED 1
 #define MAP_ERROR_ALLOCATE_PAGE 2
 #define MAP_ERROR_ALLOCATE_POOL 3
+#define MAP_ERROR_PAGE_MAPPED_ALREADY 4
 
 #define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
+
+#define ENTRY_PRESENT(entry) ((entry & 0x1) == 1)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 

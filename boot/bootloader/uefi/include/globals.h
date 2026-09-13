@@ -8,6 +8,7 @@
 #define BUFFER_SIZE 1024
 #define STACK_SIZE 4096
 #define PAGE_TABLES_COUNT 4
+#define PAGE_TABLES_ENTRY_COUNT 512
 #define KERNEL_NAME L"venux.elf"
 
 extern EFI_HANDLE ImgHdl;
