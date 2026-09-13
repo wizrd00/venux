@@ -24,6 +24,7 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-fno-asynchronous-unwind-tables \
 	-fno-pic \
 	-fno-pie \
+	-ferror-limit=1 \
 	-mno-red-zone \
 	-mno-sse \
 	-mno-mmx \
