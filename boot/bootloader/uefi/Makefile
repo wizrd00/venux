@@ -16,6 +16,7 @@ BOOTLOADER_CFLAGS_FINALL := -target x86_64-unknown-windows \
 BOOTLOADER_CFLAGS := -c \
 	-Iboot/bootloader/uefi/include \
 	-Iboot/bootloader/uefi/include/UEFI \
+	-Ikern/include \
 	-target x86_64-unknown-windows \
 	-nostdlib \
 	-mno-red-zone \

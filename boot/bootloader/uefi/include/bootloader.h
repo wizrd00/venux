@@ -5,9 +5,12 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+#include <kern_types.h>
+
 #include "Uefi.h"
 #include "Protocol/SimpleFileSystem.h"
 #include "Protocol/LoadedImage.h"
+#include "Guid/Acpi.h"
 
 #include "globals.h"
 #include "efi_stdio.h"
@@ -35,6 +38,9 @@
 #define MAP_ERROR_ALLOCATE_PAGE 2
 #define MAP_ERROR_ALLOCATE_POOL 3
 #define MAP_ERROR_PAGE_PRESENT 4
+
+#define KARGS_ERROR_ACPI 1
+#define KARGS_ERROR_GOP 2
 
 #define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
 

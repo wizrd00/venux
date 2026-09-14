@@ -21,6 +21,8 @@ size_t real_kernel_base = 0;
 size_t real_kernel_start = 0;
 size_t real_kernel_end = 0;
 
+struct kern_args kargs;
+
 static int
 efi_open_kernel_file(void)
 {
@@ -309,6 +311,45 @@ efi_map_efi_app(void)
 	return efi_addto_pml4(efi_app_start, efi_app_start, efi_app_end);
 }
 
+static int
+efi_kargs_add_rt(void)
+{
+	int ret = 0;
+	kargs.uefi_rt = (void *)SysTab->RuntimeServices;
+	return ret;
+}
+
+static int
+efi_kargs_add_acpi(void)
+{
+	int ret = 0;
+	EFI_GUID AcpiGuid = EFI_ACPI_TABLE_GUID;
+	for (UINTN i = 0; i < SysTab->NumberOfTableEntries; i++) {
+		if (efi_memcmp(
+		    (void *)&SysTab->ConfigurationTable[i].VendorGuid,
+		    (void *)&AcpiGuid, sizeof(EFI_GUID)) == 0) {
+			kargs.acpi =
+			    (void *)SysTab->ConfigurationTable[i].VendorTable;
+			return ret;
+		}
+	}
+	return ret = KARGS_ERROR_ACPI;
+}
+
+static int
+efi_kargs_add_gop(void)
+{
+	int ret = 0;
+	EFI_GUID GopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+	EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+	status = SysTab->BootServices->LocateProtocol(&GopGuid, NULL,
+	    (VOID **)&Gop);
+	if (EFI_ERROR(status))
+		return ret = KARGS_ERROR_GOP;
+	/* TODO */
+	return ret;
+}
+
 EFI_STATUS
 efi_init_pml4(void)
 {
@@ -339,6 +380,14 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
+	ret = efi_kargs_add_rt();
+	if (ret != 0)
+		FATAL_ERROR("efi_kargs_add_rt() returned %d with EFI_STATUS %d",
+		    ret, status);
+	ret = efi_kargs_add_acpi();
+	if (ret != 0)
+		FATAL_ERROR("efi_kargs_add_acpi() returned %d"
+		    "with EFI_STATUS %d", ret, status);
 	status = efi_init_pml4();
 	if (EFI_ERROR(status))
 		FATAL_ERROR("efi_init_pml4() failed with status %d", status);
@@ -365,7 +414,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (status != EFI_BUFFER_TOO_SMALL)
 		FATAL_ERROR("GetMemoryMap() must return EFI_BUFFER_TOO_SMALL"
 		    "but returned status %d", status);
-	/* TODO allocate enough buffer to fit kernel args */
 	MemoryMapSize += 2 * DescriptorSize;
 	status = SystemTable->BootServices->AllocatePool(EfiLoaderData,
 	    MemoryMapSize, (VOID **) &MemoryMap);

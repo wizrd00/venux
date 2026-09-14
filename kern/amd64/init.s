@@ -16,8 +16,6 @@ extern _kernel_stack_start
 extern _kernel_stack_end
 extern kern_main
 
-global kern_init
-
 section .text
 
 _halt:
@@ -49,7 +47,10 @@ kern_init:
 	cmp rax, _kernel_stack_end
 	mov rbx, INVALID_BOUNDARY_4
 	jne _panic
+	mov rdi, rsp
 	mov rsp, _kernel_stack_end
 	call kern_main
 	mov rbx, KERN_MAIN_RETURNED
 	jmp _panic
+
+global kern_init

@@ -32,7 +32,9 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-Wall \
 	-Wextra \
 	-Wno-unused-function \
-	-Wno-unused-label
+	-Wno-unused-parameter \
+	-Wno-unused-label \
+	-Wno-unused-variable
 
 ALL_CFLAGS :=
 
@@ -43,7 +45,7 @@ SFLAGS := -O$(OPTIMIZATION_LEVEL) \
 MODULES := bootloader kernel libc
 
 include boot/bootloader/uefi/Makefile
-include kernel/Makefile
+include kern/Makefile
 include libc/Makefile
 
 all : $(MODULES)
