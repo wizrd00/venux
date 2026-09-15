@@ -10,6 +10,7 @@
 #include "Uefi.h"
 #include "Protocol/SimpleFileSystem.h"
 #include "Protocol/LoadedImage.h"
+#include "Protocol/GraphicsOutput.h"
 #include "Guid/Acpi.h"
 
 #include "globals.h"
@@ -41,6 +42,9 @@
 
 #define KARGS_ERROR_ACPI 1
 #define KARGS_ERROR_GOP 2
+#define KARGS_ERROR_GET_MMAP0 3
+#define KARGS_ERROR_GET_MMAP1 4
+#define KARGS_ERROR_ALLOCATE_POOL 5
 
 #define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
 
@@ -72,8 +76,9 @@
 #define FATAL_ERROR(...)\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
-		    EFI_TEXT_ATTR(EFI_RED, EFI_BLACK));\
-		efi_printf("[FATAL ERROR] -> " __VA_ARGS__);\
+		    EFI_TEXT_ATTR(EFI_LIGHTRED, EFI_BLACK));\
+		efi_printf("[FATAL_ERROR:%d] -> ", __LINE__);\
+		efi_printf(__VA_ARGS__);\
 		efi_printf("\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
@@ -84,7 +89,8 @@
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));\
-		efi_printf("[LOAD ERROR] -> " __VA_ARGS__);\
+		efi_printf("[LOAD ERROR:%d] -> ", __LINE__);\
+		efi_printf(__VA_ARGS__);\
 		efi_printf("\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\
@@ -94,8 +100,9 @@
 #define MAP_ERROR(...)\
 	do {\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
-		    EFI_TEXT_ATTR(EFI_BLUE, EFI_BLACK));\
-		efi_printf("[MAP ERROR] -> " __VA_ARGS__);\
+		    EFI_TEXT_ATTR(EFI_LIGHTBLUE, EFI_BLACK));\
+		efi_printf("[MAP_ERROR:%d] -> ", __LINE__);\
+		efi_printf(__VA_ARGS__);\
 		efi_printf("\r\n");\
 		SysTab->ConOut->SetAttribute(SysTab->ConOut,\
 		    EFI_TEXT_ATTR(EFI_LIGHTGRAY, EFI_BLACK));\

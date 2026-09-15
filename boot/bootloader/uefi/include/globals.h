@@ -3,7 +3,6 @@
 
 #include "Uefi.h"
 
-#define PAGE_SIZE 4096
 #define FORMATTED_SIZE 1024
 #define BUFFER_SIZE 1024
 #define STACK_SIZE 4096

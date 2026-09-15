@@ -12,7 +12,7 @@ kernel : $(BIN_DIR)/venux.a
 $(BIN_DIR)/venux.a : $(KERN_OBJ_FILES)
 	$(AR) rcs $@ $(KERN_OBJ_FILES)
 
-$(BIN_DIR)/%.c.o : kern/src/%.c kern/include/%.h
+$(BIN_DIR)/%.c.o : kern/src/%.c $(wildcard kern/include/*)
 	$(CC) $(CFLAGS) $(KERN_CFLAGS) -c -o $@ $<
 
 $(BIN_DIR)/%.s.o : kern/$(ARCH)/%.s

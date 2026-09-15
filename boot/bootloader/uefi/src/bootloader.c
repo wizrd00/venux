@@ -350,6 +350,32 @@ efi_kargs_add_gop(void)
 	return ret;
 }
 
+static int
+efi_kargs_add_mmap(UINTN *MapKey)
+{
+	int ret = 0;
+	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+	UINTN MemoryMapSize = 0, DescriptorSize;
+	UINT32 DescriptorVersion;
+	status = SysTab->BootServices->GetMemoryMap(&MemoryMapSize,
+	    MemoryMap, MapKey, &DescriptorSize, &DescriptorVersion);
+	if (status != EFI_BUFFER_TOO_SMALL)
+		return ret = KARGS_ERROR_GET_MMAP0;
+	MemoryMapSize += 2 * DescriptorSize;
+	status = SysTab->BootServices->AllocatePool(EfiLoaderData,
+	    MemoryMapSize, (VOID **) &MemoryMap);
+	if (EFI_ERROR(status))
+		return ret = KARGS_ERROR_ALLOCATE_POOL;
+	status = SysTab->BootServices->GetMemoryMap(&MemoryMapSize,
+	    MemoryMap, MapKey, &DescriptorSize, &DescriptorVersion);
+	if (EFI_ERROR(status))
+		return ret = KARGS_ERROR_GET_MMAP1;
+	kargs.mem.info = (void *)MemoryMap;
+	kargs.mem.size = (size_t)DescriptorSize;
+	kargs.mem.count = (size_t)(MemoryMapSize / DescriptorSize);
+	return ret;
+}
+
 EFI_STATUS
 efi_init_pml4(void)
 {
@@ -380,6 +406,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
+	kargs.bios = UEFI_BIOS;
 	ret = efi_kargs_add_rt();
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_rt() returned %d with EFI_STATUS %d",
@@ -387,7 +414,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	ret = efi_kargs_add_acpi();
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_acpi() returned %d"
-		    "with EFI_STATUS %d", ret, status);
+		    " with EFI_STATUS %d", ret, status);
 	status = efi_init_pml4();
 	if (EFI_ERROR(status))
 		FATAL_ERROR("efi_init_pml4() failed with status %d", status);
@@ -406,26 +433,15 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		MAP_ERROR("efi_map_efi_app() returned %d with EFI_STATUS %d",
 		    ret, status);
-	EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
-	UINTN MemoryMapSize = 0, MapKey, DescriptorSize;
-	UINT32 DescriptorVersion;
-	status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
-	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-	if (status != EFI_BUFFER_TOO_SMALL)
-		FATAL_ERROR("GetMemoryMap() must return EFI_BUFFER_TOO_SMALL"
-		    "but returned status %d", status);
-	MemoryMapSize += 2 * DescriptorSize;
-	status = SystemTable->BootServices->AllocatePool(EfiLoaderData,
-	    MemoryMapSize, (VOID **) &MemoryMap);
-	if (EFI_ERROR(status))
-		FATAL_ERROR("AllocatePool() failed with status %d", status);
-	status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize,
-	    MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-	if (EFI_ERROR(status))
-		FATAL_ERROR("GetMemoryMap() failed with status %d", status);
+	UINTN MapKey;
+	ret = efi_kargs_add_mmap(&MapKey);
+	if (ret != 0)
+		FATAL_ERROR("efi_kargs_add_mmap() returned %d"
+		    " with EFI_STATUS %d", ret, status);
 	status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
 	if (EFI_ERROR(status))
-		FATAL_ERROR("ExitBootServices() failed with status %d", status);
+		FATAL_ERROR("ExitBootServices() failed with EFI_STATUS %d",
+		    status);
 	MODIFY_SYSTAB();
 	efi_leave();
 	efi_halt();

@@ -37,6 +37,11 @@ SECTIONS
 		*(.bss*)
 		_kernel_bss_end = .;
 	} :kern
+	.arena : ALIGN(4K) {
+		_kernel_arena_start = .;
+		. += 256K;
+		_kernel_arena_end = .;
+	}
 	_kernel_end = .;
 	_kernel_size = _kernel_end - _kernel_start;
 }
