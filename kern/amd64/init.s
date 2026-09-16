@@ -3,8 +3,7 @@ BITS 64
 INVALID_BOUNDARY_1 equ 1
 INVALID_BOUNDARY_2 equ 2
 INVALID_BOUNDARY_3 equ 3
-INVALID_BOUNDARY_4 equ 4
-KERN_MAIN_RETURNED equ 5
+KERN_MAIN_RETURNED equ 4
 
 extern _kernel_base
 extern _kernel_gap
@@ -42,10 +41,6 @@ kern_init:
 	add rax, _kernel_stack_size
 	cmp rax, _kernel_stack_end
 	mov rbx, INVALID_BOUNDARY_3
-	jne _panic
-	mov rax, _kernel_start
-	cmp rax, _kernel_stack_end
-	mov rbx, INVALID_BOUNDARY_4
 	jne _panic
 	mov rdi, rsp
 	mov rsp, _kernel_stack_end

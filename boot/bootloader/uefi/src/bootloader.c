@@ -14,10 +14,8 @@ size_t efi_app_end = 0;
 
 size_t kernel_size = 0;
 size_t kernel_entry = 0;
-size_t virt_kernel_base = 0;
 size_t virt_kernel_start = 0;
 size_t virt_kernel_end = 0;
-size_t real_kernel_base = 0;
 size_t real_kernel_start = 0;
 size_t real_kernel_end = 0;
 
@@ -122,7 +120,6 @@ efi_load_kernel(void)
 		}
 	}
 	virt_kernel_start = (size_t)(start);
-	virt_kernel_base = virt_kernel_start - STACK_SIZE;
 	virt_kernel_end = (size_t)(end);
 	kernel_size = virt_kernel_end - virt_kernel_start;
 	if (kernel_size == 0) {
@@ -134,15 +131,14 @@ efi_load_kernel(void)
 		goto out_close;
 	}
 	EFI_PHYSICAL_ADDRESS Memory;
-	UINTN Pages = (UINTN)((kernel_size + STACK_SIZE) / 4096 + 1);
+	UINTN Pages = (UINTN)(kernel_size / 4096 + 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
 		ret = LOAD_ERROR_ALLOCATE_PAGE;
 		goto out_close;
 	}
-	real_kernel_base = (size_t)Memory;
-	real_kernel_start = real_kernel_base + STACK_SIZE;
+	real_kernel_start = (size_t)Memory;
 	real_kernel_end = real_kernel_start + kernel_size;
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
@@ -294,11 +290,11 @@ static int
 efi_map_kernel(void)
 {
 	int ret = 0;
-	if (!PAGE_ALIGNED(real_kernel_base))
+	if (!PAGE_ALIGNED(real_kernel_start))
 		return ret = MAP_ERROR_PAGE_ALIGNED;
-	if (!PAGE_ALIGNED(virt_kernel_base))
+	if (!PAGE_ALIGNED(virt_kernel_start))
 		return ret = MAP_ERROR_PAGE_ALIGNED;
-	return efi_addto_pml4(real_kernel_base, virt_kernel_base,
+	return efi_addto_pml4(real_kernel_start, virt_kernel_start,
 	    virt_kernel_end);
 }
 
@@ -422,8 +418,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-	if (virt_kernel_base <= efi_app_end)
-		FATAL_ERROR("kernel base virtual address starts before"
+	if (virt_kernel_start <= efi_app_end)
+		FATAL_ERROR("kernel start virtual address starts before"
 		    " EFI application virtual address ends");
 	ret = efi_map_kernel();
 	if (ret != 0)
