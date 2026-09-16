@@ -10,14 +10,22 @@
 #define UEFI_BIOS 0
 #define LEGACY_BIOS 1
 
+struct mem_desc {
+	uint32_t type;
+	uint8_t *phys_start;
+	uint8_t *virt_start;
+	uint64_t page_count;
+	uint64_t attr;
+};
+
 struct fb_info {
 	void *base;
 };
 
 struct mem_info {
 	void *info;
-	size_t size;
-	size_t count;
+	int size;
+	int count;
 };
 
 struct kern_args {

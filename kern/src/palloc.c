@@ -1,4 +1,4 @@
-#include "paging.h"
+#include "palloc.h"
 
 extern uint8_t _kernel_arena_start[];
 extern uint8_t _kernel_arena_end[];
@@ -24,13 +24,11 @@ kern_alloc_init(void)
 	return kern_alloc_validate();
 }
 
-int
-kern_alloc_page(void **page)
+void *
+kern_palloc(size_t count)
 {
-	int ret = 0;
-	if (offset + PAGE_SIZE > size)
-		return ret = KERN_ALLOC_ERROR_OUT_OF_ARENA;
-	*page = (void *)(arena + offset);
-	offset += PAGE_SIZE;
-	return ret;
+	if (offset + (PAGE_SIZE * count) > size)
+		return NULL;
+	offset += PAGE_SIZE * count;
+	return (void *)(arena + offset);
 }

@@ -1,5 +1,5 @@
-#ifndef _KERN_PAGING_H
-#define _KERN_PAGING_H
+#ifndef _KERN_PALLOC_H
+#define _KERN_PALLOC_H
 
 #include "kern_types.h"
 
@@ -7,7 +7,7 @@
 #define KERN_ALLOC_ERROR_OUT_OF_ARENA 2
 
 int kern_alloc_init(void);
-int kern_alloc_page(void **page);
+void *kern_palloc(size_t count);
 
 extern uint8_t *arena;
 extern size_t size;
