@@ -1,3 +1,4 @@
 ### Developing...
 ---
-- [ ] Developing Bootloader
+- [x] Developing Bootloader
+- [ ] Paging whole physical memory (1:1)

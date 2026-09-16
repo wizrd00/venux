@@ -4,9 +4,8 @@ ENTRY(kern_init)
 _kernel_base = 0xffffffff80000000;
 _kernel_gap = 1M;
 
+_kernel_arena_size = 256K;
 _kernel_stack_size = 4K;
-_kernel_stack_start = _kernel_base + _kernel_gap - _kernel_stack_size;
-_kernel_stack_end = _kernel_stack_start + _kernel_stack_size;
 
 PHDRS
 {
@@ -39,8 +38,13 @@ SECTIONS
 	} :kern
 	.arena : ALIGN(4K) {
 		_kernel_arena_start = .;
-		. += 256K;
+		. += _kernel_arena_size;
 		_kernel_arena_end = .;
+	}
+	.stack : ALIGN(4K) {
+		_kernel_stack_start = .;
+		. += _kernel_stack_size;
+		_kernel_stack_end = .;
 	}
 	_kernel_end = .;
 	_kernel_size = _kernel_end - _kernel_start;
