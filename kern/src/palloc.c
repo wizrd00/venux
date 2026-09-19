@@ -11,7 +11,7 @@ kern_alloc_validate(void)
 {
 	int ret = 0;
 	if ((size < PAGE_SIZE) || ((size & 0xfff) != 0))
-		return ret = KERN_ALLOC_ERROR_INVALID_SIZE;
+		return ret = KERN_ERROR_INVALID_ARENA_SIZE;
 	return ret;
 }
 
@@ -29,6 +29,7 @@ kern_palloc(size_t count)
 {
 	if (offset + (PAGE_SIZE * count) > size)
 		return NULL;
+	void *addr = (void *)(arena + offset);
 	offset += PAGE_SIZE * count;
-	return (void *)(arena + offset);
+	return addr;
 }

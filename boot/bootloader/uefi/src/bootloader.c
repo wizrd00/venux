@@ -310,6 +310,15 @@ efi_map_efi_app(void)
 }
 
 static int
+efi_map_mmap(void)
+{
+	int ret = 0;
+	size_t mmap_start = (size_t)kargs.mem.info & 0xfffffffffffff000;
+	size_t mmap_end = mmap_start + kargs.mem.size * kargs.mem.count;
+	return efi_addto_pml4(mmap_start, mmap_start, mmap_end);
+}
+
+static int
 efi_kargs_add_rt(void)
 {
 	int ret = 0;
@@ -364,13 +373,16 @@ efi_kargs_add_mmap(UINTN *MapKey)
 	    MemoryMapSize, (VOID **) &MemoryMap);
 	if (EFI_ERROR(status))
 		return ret = KARGS_ERROR_ALLOCATE_POOL;
+	kargs.mem.info = (void *)MemoryMap;
+	kargs.mem.size = (int)DescriptorSize;
+	kargs.mem.count = (int)(MemoryMapSize / DescriptorSize);
+	ret = efi_map_mmap();
+	if (ret != 0)
+		return ret;
 	status = SysTab->BootServices->GetMemoryMap(&MemoryMapSize,
 	    MemoryMap, MapKey, &DescriptorSize, &DescriptorVersion);
 	if (EFI_ERROR(status))
 		return ret = KARGS_ERROR_GET_MMAP1;
-	kargs.mem.info = (void *)MemoryMap;
-	kargs.mem.size = (int)DescriptorSize;
-	kargs.mem.count = (int)(MemoryMapSize / DescriptorSize);
 	return ret;
 }
 
@@ -413,6 +425,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
+	kargs.kern_start = (void *)real_kernel_start;
 	if (virt_kernel_start <= efi_app_end)
 		FATAL_ERROR("kernel start virtual address starts before"
 		    " EFI application virtual address ends");

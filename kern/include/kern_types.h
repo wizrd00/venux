@@ -6,16 +6,14 @@
 #include <stdint.h>
 
 #include "kern_globals.h"
-
-#define UEFI_BIOS 0
-#define LEGACY_BIOS 1
+#include "kern_errors.h"
+#include "kern_memtypes.h"
 
 struct mem_desc {
 	uint32_t type;
 	uint8_t *phys_start;
 	uint8_t *virt_start;
 	uint64_t page_count;
-	uint64_t attr;
 };
 
 struct fb_info {
@@ -30,6 +28,7 @@ struct mem_info {
 
 struct kern_args {
 	int bios;
+	void *kern_start;
 	void *uefi_rt;
 	void *acpi;
 	struct fb_info fb;
