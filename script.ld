@@ -9,7 +9,12 @@ _kernel_stack_size = 4K;
 
 PHDRS
 {
-	kern PT_LOAD;
+	text PT_LOAD;
+	rodata PT_LOAD;
+	data PT_LOAD;
+	bss PT_LOAD;
+	arena PT_LOAD;
+	stack PT_LOAD;
 }
 
 SECTIONS
@@ -20,32 +25,32 @@ SECTIONS
 		_kernel_text_start = .;
 		*(.text*)
 		_kernel_text_end = .;
-	} :kern
+	} :text
 	.rodata : ALIGN(4K) {
 		_kernel_rodata_start = .;
 		*(.rodata*)
 		_kernel_rodata_end = .;
-	} :kern
+	} :rodata
 	.data : ALIGN(4K) {
 		_kernel_data_start = .;
 		*(.data*)
 		_kernel_data_end = .;
-	} :kern
+	} :data
 	.bss : ALIGN(4K) {
 		_kernel_bss_start = .;
 		*(.bss*)
 		_kernel_bss_end = .;
-	} :kern
+	} :bss
 	.arena : ALIGN(4K) {
 		_kernel_arena_start = .;
 		. += _kernel_arena_size;
 		_kernel_arena_end = .;
-	}
+	} :arena
 	.stack : ALIGN(4K) {
 		_kernel_stack_start = .;
 		. += _kernel_stack_size;
 		_kernel_stack_end = .;
-	}
+	} :stack
 	_kernel_end = .;
 	_kernel_size = _kernel_end - _kernel_start;
 }
