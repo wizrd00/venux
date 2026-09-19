@@ -52,7 +52,6 @@ SECTIONS
 		_kernel_stack_end = .;
 	} :stack
 	_kernel_end = .;
-	_kernel_size = _kernel_end - _kernel_start;
 }
 
 OUTPUT_FORMAT(elf64-x86-64)

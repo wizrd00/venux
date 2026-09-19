@@ -7,9 +7,11 @@ KERN_MAIN_RETURNED equ 4
 
 extern _kernel_base
 extern _kernel_gap
-extern _kernel_size
 extern _kernel_start
 extern _kernel_end
+extern _kernel_arena_size
+extern _kernel_arena_start
+extern _kernel_arena_end
 extern _kernel_stack_size
 extern _kernel_stack_start
 extern _kernel_stack_end
@@ -21,7 +23,7 @@ _halt:
 	hlt
 	jmp _halt
 
-_panic:
+kern_panic:
 	cli
 	jmp _halt
 
@@ -30,22 +32,27 @@ kern_init:
 	mov rax, _kernel_base
 	add rax, _kernel_gap
 	cmp rax, _kernel_start
-	mov rbx, INVALID_BOUNDARY_1
-	jne _panic
-	mov rax, _kernel_start
-	add rax, _kernel_size
-	cmp rax, _kernel_end
-	mov rbx, INVALID_BOUNDARY_2
-	jne _panic
+	mov rdi, INVALID_BOUNDARY_1
+	mov rsi, 0
+	jne kern_panic
+	mov rax, _kernel_arena_start
+	add rax, _kernel_arena_size
+	cmp rax, _kernel_arena_end
+	mov rdi, INVALID_BOUNDARY_2
+	mov rsi, 0
+	jne kern_panic
 	mov rax, _kernel_stack_start
 	add rax, _kernel_stack_size
 	cmp rax, _kernel_stack_end
-	mov rbx, INVALID_BOUNDARY_3
-	jne _panic
+	mov rdi, INVALID_BOUNDARY_3
+	mov rsi, 0
+	jne kern_panic
 	mov rdi, rsp
 	mov rsp, _kernel_stack_end
 	call kern_main
-	mov rbx, KERN_MAIN_RETURNED
-	jmp _panic
+	mov rdi, KERN_MAIN_RETURNED
+	mov rsi, 0
+	jmp kern_panic
 
 global kern_init
+global kern_panic
