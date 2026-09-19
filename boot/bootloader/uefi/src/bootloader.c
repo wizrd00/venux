@@ -131,7 +131,7 @@ efi_load_kernel(void)
 		goto out_close;
 	}
 	EFI_PHYSICAL_ADDRESS Memory;
-	UINTN Pages = (UINTN)(kernel_size / 4096 + 1);
+	UINTN Pages = (UINTN)((kernel_size / 4096) + 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
@@ -239,7 +239,7 @@ efi_addto_pd(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pd)
 {
 	int ret = 0;
 	while (virt_start < virt_end) {
-		size_t max_end = (virt_start | 0x1fffff);
+		size_t max_end = (virt_start | 0x1fffff) + 1;
 		size_t chunk_end = (max_end > virt_end) ? virt_end : max_end;
 		int pdi = (int)((virt_start >> 21) & 0x1ff);
 		if (!ENTRY_PRESENT(pd[pdi])) {
@@ -251,8 +251,8 @@ efi_addto_pd(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pd)
 		ret = efi_addto_pt(real_start, virt_start, chunk_end, pt);
 		if (ret != 0)
 			return ret;
-		virt_start += chunk_end - virt_start;
 		real_start += chunk_end - virt_start;
+		virt_start += chunk_end - virt_start;
 	}
 	return ret;
 }
@@ -294,6 +294,8 @@ efi_map_kernel(void)
 		return ret = MAP_ERROR_PAGE_ALIGNED;
 	if (!PAGE_ALIGNED(virt_kernel_start))
 		return ret = MAP_ERROR_PAGE_ALIGNED;
+	if (virt_kernel_start >= virt_kernel_end)
+		return ret = MAP_ERROR_INVALID_RANGE;
 	return efi_addto_pml4(real_kernel_start, virt_kernel_start,
 	    virt_kernel_end);
 }
@@ -407,13 +409,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_rt() returned %d with EFI_STATUS %d",
 		    ret, status);
-	ret = efi_kargs_add_acpi();
-	if (ret != 0)
-		FATAL_ERROR("efi_kargs_add_acpi() returned %d"
-		    " with EFI_STATUS %d", ret, status);
-	status = efi_init_pml4();
-	if (EFI_ERROR(status))
-		FATAL_ERROR("efi_init_pml4() failed with status %d", status);
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
