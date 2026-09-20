@@ -66,7 +66,7 @@ kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pt = (uint64_t *)(pd[pdi] & 0xfffffffffffff000);
-		ret = kern_map_into_pt(paddr_s, vaddr_s, vaddr_e, pt);
+		ret = kern_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -90,7 +90,7 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pd = (uint64_t *)(pdpt[pdpti] & 0xfffffffffffff000);
-		ret = kern_map_into_pd(paddr_s, vaddr_s, vaddr_e, pd);
+		ret = kern_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -114,7 +114,7 @@ kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e)
 		}
 		uint64_t *pdpt = (uint64_t *)(phys_pml4[pml4i] &
 		    0xfffffffffffff000);
-		ret = kern_map_into_pdpt(paddr_s, vaddr_s, vaddr_e, pdpt);
+		ret = kern_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -133,9 +133,8 @@ kern_map_physmem_desc(struct mem_desc *desc)
 		if (RET_ERROR(ret))
 			return ret;
 	}
-	return kern_map_into_pml4((uint64_t)desc->phys_start,
-	    (uint64_t)desc->virt_start,
-	    (uint64_t)desc->virt_start + desc->page_count * PAGE_SIZE);
+	return kern_map_into_pml4(desc->phys_start, desc->phys_start,
+	    desc->phys_start + desc->page_count * PAGE_SIZE);
 }
 
 static int

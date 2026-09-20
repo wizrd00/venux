@@ -11,8 +11,8 @@
 
 struct mem_desc {
 	uint32_t type;
-	uint8_t *phys_start;
-	uint8_t *virt_start;
+	uint64_t phys_start;
+	uint64_t virt_start;
 	uint64_t page_count;
 };
 
