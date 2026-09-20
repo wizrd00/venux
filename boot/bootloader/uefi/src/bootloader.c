@@ -417,6 +417,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
 	kargs.bios = UEFI_BIOS;
+	ret = efi_init_pml4();
+	if (ret != 0)
+		FATAL_ERROR("efi_init_pml4() returned %d with EFI_STATUS %d",
+		    ret, status);
 	ret = efi_kargs_add_rt();
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_rt() returned %d with EFI_STATUS %d",
