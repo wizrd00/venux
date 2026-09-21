@@ -33,6 +33,17 @@ set_entry_flags(uint32_t type)
 	return;
 }
 
+static void *
+make_canonical(void *addr)
+{
+	uint64_t tmp = (uint64_t)addr;
+	if (((tmp >> 47) & 1) == 1)
+		tmp |= 0xffff000000000000ULL;
+	else
+		tmp &= 0x0000ffffffffffffULL;
+	return (void *)tmp;
+}
+
 static int
 kern_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pt)
@@ -69,6 +80,7 @@ kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 			}
 			uint64_t *pt = (uint64_t *)(pd[pdi] &
 			    0xfffffffffffff000ULL);
+			pt = (uint64_t *)make_canonical((void *)pt);
 			ret = kern_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
 			if (RET_ERROR(ret))
 				return ret;
@@ -95,6 +107,7 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 		}
 		uint64_t *pd = (uint64_t *)(pdpt[pdpti] &
 		    0xfffffffffffff000ULL);
+		pd = (uint64_t *)make_canonical((void *)pd);
 		ret = kern_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
 		if (RET_ERROR(ret))
 			return ret;
@@ -119,6 +132,7 @@ kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e)
 		}
 		uint64_t *pdpt = (uint64_t *)(phys_pml4[pml4i] &
 		    0xfffffffffffff000ULL);
+		pdpt = (uint64_t *)make_canonical((void *)pdpt);
 		ret = kern_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
 		if (RET_ERROR(ret))
 			return ret;
@@ -166,7 +180,6 @@ kern_map_kernel(void *pdpt)
 		return ret = KERN_ERROR_INVALID_PHYS_PML4;
 	int pml4i = (int)((kern_vaddr >> 39) & 0x1ffULL);
 	phys_pml4[pml4i] = (uint64_t)pdpt | PML4E_FLAGS;
-	/* TODO : map kernel with right permissions on each section */
 	return ret;
 }
 
@@ -202,6 +215,6 @@ kern_main(struct kern_args *kargs)
 	ret = kern_map_kernel(kargs->kern_pdpt);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	kern_set_pml4(phys_pml4);
+	kern_set_pml4((uint64_t *)CONVERT_KERNEL_VADDR(phys_pml4));
 	return;
 }

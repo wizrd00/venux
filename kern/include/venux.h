@@ -6,9 +6,12 @@
 #include "paging.h"
 
 #define PHYSMEM_OFFSET 0xffff800000000000ULL
+#define KERNEL_OFFSET (kern_vaddr - kern_paddr)
 
 #define PML4E_FLAGS 0x003ULL
 #define PDPTE_FLAGS 0x003ULL
+
+#define CONVERT_KERNEL_VADDR(_addr) ((uint64_t)_addr - KERNEL_OFFSET)
 
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\
@@ -24,7 +27,7 @@
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
 			break;\
 		}\
-		_entry = (uint64_t)_tmp | _flags;\
+		_entry = ((uint64_t)_tmp & 0xffffffffffffULL) | _flags;\
 	} while (0)
 
 #define ALLOC_PD(_entry, _ret, _flags)\
