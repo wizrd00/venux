@@ -383,6 +383,8 @@ efi_kargs_add_mmap(UINTN *MapKey)
 	    MemoryMap, MapKey, &DescriptorSize, &DescriptorVersion);
 	if (EFI_ERROR(status))
 		return ret = KARGS_ERROR_GET_MMAP1;
+	kargs.mem.size = (int)DescriptorSize;
+	kargs.mem.count = (int)(MemoryMapSize / DescriptorSize);
 	return ret;
 }
 
