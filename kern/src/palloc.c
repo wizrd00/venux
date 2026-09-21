@@ -4,7 +4,7 @@ extern uint8_t _kernel_arena_start[];
 extern uint8_t _kernel_arena_end[];
 
 uint8_t *arena = _kernel_arena_start;
-size_t size, offset;
+static size_t size, offset;
 
 static int
 kern_alloc_validate(void)
