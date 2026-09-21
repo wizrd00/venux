@@ -34,13 +34,13 @@ convert_memtype(int bios_type, int mem_type)
 	case UEFI_BIOS :
 		switch (mem_type) {
 		case UEFI_LOADER_CODE :
-		case UEFI_LOADER_DATA :
 		case UEFI_BOOT_SERVICES_CODE :
 		case UEFI_BOOT_SERVICES_DATA :
 		case UEFI_CONVENTIONAL :
 		case UEFI_PERSISTENT :
 			return AVAILABLE;
 		case UEFI_RESERVED :
+		case UEFI_LOADER_DATA :
 		case UEFI_RUNTIME_SERVICES_CODE :
 		case UEFI_RUNTIME_SERVICES_DATA :
 		case UEFI_UNUSABLE :

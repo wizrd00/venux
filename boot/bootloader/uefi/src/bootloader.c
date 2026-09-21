@@ -358,6 +358,15 @@ efi_kargs_add_gop(void)
 }
 
 static int
+efi_kargs_add_kern_pdpt(void)
+{
+	int ret = 0;
+	int pml4i = (int)((virt_kernel_start >> 39) & 0x1ffULL);
+	kargs.kern_pdpt = (void *)(pml4[pml4i] & 0xfffffffffffff000ULL);
+	return ret;
+}
+
+static int
 efi_kargs_add_mmap(UINTN *MapKey)
 {
 	int ret = 0;
@@ -439,6 +448,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		MAP_ERROR("efi_map_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
+	efi_kargs_add_kern_pdpt();
 	ret = efi_map_efi_app();
 	if (ret != 0)
 		MAP_ERROR("efi_map_efi_app() returned %d with EFI_STATUS %d",

@@ -135,9 +135,7 @@ kern_map_physmem_desc(struct mem_desc *desc)
 	set_entry_flags(desc->type);
 	desc->virt_start = desc->phys_start + PHYSMEM_OFFSET;
 	if (phys_pml4 == NULL) {
-		ALLOC_PML4(phys_pml4, ret);
-		if (RET_ERROR(ret))
-			return ret;
+		return ret = KERN_ERROR_INVALID_PHYS_PML4;
 	}
 	return kern_map_into_pml4(desc->phys_start, desc->virt_start,
 	    desc->virt_start + desc->page_count * PAGE_SIZE);
@@ -161,12 +159,27 @@ kern_map_physmem(struct mem_info *mem)
 }
 
 static int
-kern_map_kernel(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e)
+kern_map_kernel(void *pdpt)
 {
 	int ret = 0;
-	if (vaddr_s >= vaddr_e)
-		return ret = KERN_ERROR_INVALID_KERNEL_RANGE;
-	return kern_map_into_pml4(paddr_s, vaddr_s, vaddr_e);
+	if (phys_pml4 == NULL)
+		return ret = KERN_ERROR_INVALID_PHYS_PML4;
+	int pml4i = (int)((kern_vaddr >> 39) & 0x1ffULL);
+	phys_pml4[pml4i] = (uint64_t)pdpt | PML4E_FLAGS;
+	/* TODO : map kernel with right permissions on each section */
+	return ret;
+}
+
+static int
+kern_init_phys_pml4(void)
+{
+	int ret = 0;
+	if (phys_pml4 == NULL) {
+		ALLOC_PML4(phys_pml4, ret);
+		if (RET_ERROR(ret))
+			return ret;
+	}
+	return ret;
 }
 
 void
@@ -180,11 +193,15 @@ kern_main(struct kern_args *kargs)
 	ret = kern_alloc_init();
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
+	ret = kern_init_phys_pml4();
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
 	ret = kern_map_physmem(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	ret = kern_map_kernel(kern_paddr, kern_vaddr, kern_vaddr + kern_size);
+	ret = kern_map_kernel(kargs->kern_pdpt);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
+	kern_set_pml4(phys_pml4);
 	return;
 }
