@@ -131,7 +131,7 @@ efi_load_kernel(void)
 		goto out_close;
 	}
 	EFI_PHYSICAL_ADDRESS Memory;
-	UINTN Pages = (UINTN)((kernel_size / 4096) + 1);
+	UINTN Pages = (UINTN)((kernel_size / PAGE_SIZE) + 1);
 	status = SysTab->BootServices->AllocatePages(AllocateAnyPages,
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
@@ -224,7 +224,7 @@ efi_addto_pt(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pt)
 {
 	int ret = 0;
 	while (virt_start < virt_end) {
-		int pti = (int)((virt_start >> 12) & 0x1ff);
+		int pti = (int)((virt_start >> 12) & 0x1ffULL);
 		if (ENTRY_PRESENT(pt[pti]))
 			return ret = MAP_ERROR_PAGE_PRESENT;
 		pt[pti] = (UINT64)(real_start | ENTRY_FLAGS);
@@ -239,15 +239,15 @@ efi_addto_pd(size_t real_start, size_t virt_start, size_t virt_end, UINT64 *pd)
 {
 	int ret = 0;
 	while (virt_start < virt_end) {
-		size_t max_end = (virt_start | 0x1fffff) + 1;
+		size_t max_end = (virt_start | 0x1fffffULL) + 1;
 		size_t chunk_end = (max_end > virt_end) ? virt_end : max_end;
-		int pdi = (int)((virt_start >> 21) & 0x1ff);
+		int pdi = (int)((virt_start >> 21) & 0x1ffULL);
 		if (!ENTRY_PRESENT(pd[pdi])) {
 			ret = efi_alloc_table(pd + pdi);
 			if (ret != 0)
 				return ret;
 		}
-		UINT64 *pt = (UINT64 *)(pd[pdi] & 0xfffffffffffff000);
+		UINT64 *pt = (UINT64 *)(pd[pdi] & 0xfffffffffffff000ULL);
 		ret = efi_addto_pt(real_start, virt_start, chunk_end, pt);
 		if (ret != 0)
 			return ret;
@@ -262,13 +262,13 @@ efi_addto_pdpt(size_t real_start, size_t virt_start, size_t virt_end,
     UINT64 *pdpt)
 {
 	int ret = 0;
-	int pdpti = (int)((virt_start >> 30) & 0x1ff);
+	int pdpti = (int)((virt_start >> 30) & 0x1ffULL);
 	if (!ENTRY_PRESENT(pdpt[pdpti])) {
 		ret = efi_alloc_table(pdpt + pdpti);
 		if (ret != 0)
 			return ret;
 	}
-	UINT64 *pd = (UINT64 *)(pdpt[pdpti] & 0xfffffffffffff000);
+	UINT64 *pd = (UINT64 *)(pdpt[pdpti] & 0xfffffffffffff000ULL);
 	return efi_addto_pd(real_start, virt_start, virt_end, pd);
 }
 
@@ -276,13 +276,13 @@ static int
 efi_addto_pml4(size_t real_start, size_t virt_start, size_t virt_end)
 {
 	int ret = 0;
-	int pml4i = (int)((virt_start >> 39) & 0x1ff);
+	int pml4i = (int)((virt_start >> 39) & 0x1ffULL);
 	if (!ENTRY_PRESENT(pml4[pml4i])) {
 		ret = efi_alloc_table(pml4 + pml4i);
 		if (ret != 0)
 			return ret;
 	}
-	UINT64 *pdpt = (UINT64 *)(pml4[pml4i] & 0xfffffffffffff000);
+	UINT64 *pdpt = (UINT64 *)(pml4[pml4i] & 0xfffffffffffff000ULL);
 	return efi_addto_pdpt(real_start, virt_start, virt_end, pdpt);
 }
 
@@ -313,7 +313,7 @@ static int
 efi_map_mmap(void)
 {
 	int ret = 0;
-	size_t mmap_start = (size_t)kargs.mem.info & 0xfffffffffffff000;
+	size_t mmap_start = (size_t)kargs.mem.info & 0xfffffffffffff000ULL;
 	size_t mmap_end = mmap_start + kargs.mem.size * kargs.mem.count;
 	return efi_addto_pml4(mmap_start, mmap_start, mmap_end);
 }

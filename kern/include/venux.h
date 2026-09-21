@@ -5,6 +5,11 @@
 #include "palloc.h"
 #include "paging.h"
 
+#define PHYSMEM_OFFSET 0xffff800000000000ULL
+
+#define PML4E_FLAGS 0x003ULL
+#define PDPTE_FLAGS 0x003ULL
+
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\
 		_pml4 = (uint64_t *)kern_palloc(1);\
@@ -30,10 +35,10 @@
 
 #define ENTRY_PRESENT(_entry) ((_entry & 0x1) == 1)
 
-#define GET_PML4I(_addr) ((_addr >> 39) & 0x1ff)
-#define GET_PDPTI(_addr) ((_addr >> 30) & 0x1ff)
-#define GET_PDI(_addr) ((_addr >> 21) & 0x1ff)
-#define GET_PTI(_addr) ((_addr >> 12) & 0x1ff)
+#define GET_PML4I(_addr) ((_addr >> 39) & 0x1ffULL)
+#define GET_PDPTI(_addr) ((_addr >> 30) & 0x1ffULL)
+#define GET_PDI(_addr) ((_addr >> 21) & 0x1ffULL)
+#define GET_PTI(_addr) ((_addr >> 12) & 0x1ffULL)
 
 void kern_main(struct kern_args *);
 

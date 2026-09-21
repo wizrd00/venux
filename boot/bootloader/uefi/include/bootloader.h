@@ -20,7 +20,7 @@
 #include "halt.h"
 #include "elf.h"
 
-#define ENTRY_FLAGS 0x003
+#define ENTRY_FLAGS 0x003ULL
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1
 #define LOAD_ERROR_OPEN_VOLUME 2
@@ -47,9 +47,9 @@
 #define KARGS_ERROR_GET_MMAP1 4
 #define KARGS_ERROR_ALLOCATE_POOL 5
 
-#define PAGE_ALIGNED(addr) ((addr & 0xfff) == 0)
+#define PAGE_ALIGNED(addr) ((addr & 0xfffULL) == 0)
 
-#define ENTRY_PRESENT(entry) ((entry & 0x1) == 1)
+#define ENTRY_PRESENT(entry) ((entry & 0x1ULL) == 1)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 
