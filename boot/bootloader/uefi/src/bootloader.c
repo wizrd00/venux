@@ -501,8 +501,13 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_mmap() returned %d"
 		    " with EFI_STATUS %d", ret, status);
-	status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
-	if (EFI_ERROR(status))
+	int trycount = 3;
+	while (trycount-- > 0) {
+		status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
+		if (!EFI_ERROR(status))
+			break;
+	}
+	if (trycount == 0)
 		FATAL_ERROR("ExitBootServices() failed with EFI_STATUS %d",
 		    status);
 	MODIFY_SYSTAB();
