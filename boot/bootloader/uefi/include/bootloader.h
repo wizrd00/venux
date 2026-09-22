@@ -20,6 +20,8 @@
 #include "halt.h"
 #include "elf.h"
 
+#define KERNEL_FILENAME L"venux.elf"
+
 #define ENTRY_FLAGS 0x003ULL
 
 #define LOAD_ERROR_HANDLE_PROTOCOL 1

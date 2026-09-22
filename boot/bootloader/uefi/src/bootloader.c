@@ -40,7 +40,7 @@ efi_open_kernel_file(void)
 	status = FileSystem->OpenVolume(FileSystem, &Volume);
 	if (EFI_ERROR(status))
 		return ret = LOAD_ERROR_OPEN_VOLUME;
-	status = Volume->Open(Volume, &KernelFile, KERNEL_NAME,
+	status = Volume->Open(Volume, &KernelFile, KERNEL_FILENAME,
 	    EFI_FILE_MODE_READ, (UINT64)0);
 	if (EFI_ERROR(status))
 		return ret = LOAD_ERROR_OPEN_FILE;
