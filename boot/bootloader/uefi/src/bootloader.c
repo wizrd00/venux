@@ -328,14 +328,6 @@ efi_map_mmap(void)
 }
 
 static int
-efi_kargs_add_rt(void)
-{
-	int ret = 0;
-	kargs.uefi_rt = (void *)SysTab->RuntimeServices;
-	return ret;
-}
-
-static int
 efi_kargs_add_acpi(void)
 {
 	int ret = 0;
@@ -471,14 +463,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
-	ret = efi_init_pml4();
-	if (ret != 0)
-		FATAL_ERROR("efi_init_pml4() returned %d with EFI_STATUS %d",
-		    ret, status);
-	ret = efi_kargs_add_rt();
-	if (ret != 0)
-		FATAL_ERROR("efi_kargs_add_rt() returned %d with EFI_STATUS %d",
-		    ret, status);
+	status = efi_init_pml4();
+	if (EFI_ERROR(status))
+		FATAL_ERROR("efi_init_pml4() failed with EFI_STATUS %d",
+		    status);
 	ret = efi_load_kernel();
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",

@@ -29,7 +29,6 @@ struct mem_info {
 struct kern_args {
 	void *kern_start;
 	void *kern_pdpt;
-	void *uefi_rt;
 	void *acpi;
 	struct fb_info fb;
 	struct mem_info mem;
