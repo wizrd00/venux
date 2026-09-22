@@ -3,8 +3,7 @@ BITS 64
 section .text
 
 kern_set_pml4:
-	mov rax, rdi
-	mov cr3, rax
+	mov cr3, rdi
 	hlt
 
 kern_get_pml4:

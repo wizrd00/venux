@@ -4,7 +4,7 @@ ENTRY(kern_init)
 _kernel_base = 0xffffffff80000000;
 _kernel_gap = 1M;
 
-_kernel_arena_size = 1M;
+_kernel_arena_size = 256K;
 _kernel_stack_size = 4K;
 
 PHDRS

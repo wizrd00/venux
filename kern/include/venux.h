@@ -10,8 +10,12 @@
 
 #define PML4E_FLAGS 0x003ULL
 #define PDPTE_FLAGS 0x003ULL
+#define PDPSE_FLAGS 0x083ULL
+#define PDE_FLAGS 0x003ULL
+#define PTE_FLAGS 0x003ULL
 
 #define CONVERT_KERNEL_VADDR(_addr) ((uint64_t)_addr - KERNEL_OFFSET)
+#define CONVERT_KERNEL_PADDR(_addr) ((uint64_t)_addr + KERNEL_OFFSET)
 
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\
@@ -27,7 +31,8 @@
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
 			break;\
 		}\
-		_entry = ((uint64_t)_tmp & 0xffffffffffffULL) | _flags;\
+		_entry = (CONVERT_KERNEL_VADDR(_tmp) & 0xffffffffffffULL) |\
+		    _flags;\
 	} while (0)
 
 #define ALLOC_PD(_entry, _ret, _flags)\
@@ -45,7 +50,6 @@
 
 void kern_main(struct kern_args *);
 
-extern int bios;
 extern uint64_t *phys_pml4;
 
 #endif

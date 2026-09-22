@@ -7,41 +7,16 @@ uint64_t kern_paddr = 0;
 uint64_t kern_vaddr = 0;
 uint64_t kern_size = 0;
 
-int bios;
-
 uint64_t *phys_pml4 = NULL;
-static uint64_t pdpse_flags = 0x001ULL;
-static uint64_t pde_flags = 0x001ULL;
-static uint64_t pte_flags = 0x001ULL;
 
-static void
-set_entry_flags(uint32_t type)
+static uint64_t *
+convert_entry_into_table(uint64_t entry)
 {
-	pdpse_flags = 0x083ULL;
-	pde_flags = 0x003ULL;
-	switch (convert_memtype(bios, type)) {
-	case AVAILABLE :
-	case ACPI_RECLAIM :
-	case ACPI_NVS :
-		pte_flags = 0x003ULL;
-		break;
-	case RESERVED :
-	default :
-		pte_flags = 0x000ULL;
-		break;
-	}
-	return;
-}
-
-static void *
-make_canonical(void *addr)
-{
-	uint64_t tmp = (uint64_t)addr;
-	if (((tmp >> 47) & 1) == 1)
-		tmp |= 0xffff000000000000ULL;
+	if (((entry >> 47) & 1) == 1)
+		entry |= 0xffff000000000000ULL;
 	else
-		tmp &= 0x0000ffffffffffffULL;
-	return (void *)tmp;
+		entry &= 0x0000fffffffff000ULL;
+	return (uint64_t *)CONVERT_KERNEL_PADDR(entry);
 }
 
 static int
@@ -49,11 +24,13 @@ kern_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pt)
 {
 	int ret = 0;
+	if (pt == NULL)
+		return ret = KERN_ERROR_INVALID_PT;
 	while (vaddr_s < vaddr_e) {
 		int pti = (int)GET_PTI(vaddr_s);
 		if (ENTRY_PRESENT(pt[pti]))
 			return ret = KERN_ERROR_PAGE_ALREADY_PRESENT;
-		pt[pti] = paddr_s | pte_flags;
+		pt[pti] = (paddr_s & 0xffffffffffffULL) | PTE_FLAGS;
 		paddr_s += PAGE_SIZE;
 		vaddr_s += PAGE_SIZE;
 	}
@@ -65,22 +42,24 @@ kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pd)
 {
 	int ret = 0;
+	if (pd == NULL)
+		return ret = KERN_ERROR_INVALID_PD;
 	while (vaddr_s < vaddr_e) {
 		int pdi = (int)GET_PDI(vaddr_s);
 		uint64_t bound_e = ((vaddr_s | 0x1fffffULL) + 1 > vaddr_e) ?
 		    vaddr_e : (vaddr_s | 0x1fffffULL) + 1;
 		if (HUGE_PAGE_ALIGNED(paddr_s) && HUGE_PAGE_ALIGNED(vaddr_s) &&
 		    HUGE_PAGE_ALIGNED(bound_e)) {
-			pd[pdi] = paddr_s | pdpse_flags;
+			if (ENTRY_PRESENT(pd[pdi]))
+				return ret = KERN_ERROR_PAGE_ALREADY_PRESENT;
+			pd[pdi] = (paddr_s & 0xffffffffffffULL) | PDPSE_FLAGS;
 		} else {
 			if (!ENTRY_PRESENT(pd[pdi])) {
-				ALLOC_PT(pd[pdi], ret, pde_flags);
+				ALLOC_PT(pd[pdi], ret, PDE_FLAGS);
 				if (RET_ERROR(ret))
 					return ret;
 			}
-			uint64_t *pt = (uint64_t *)(pd[pdi] &
-			    0xfffffffffffff000ULL);
-			pt = (uint64_t *)make_canonical((void *)pt);
+			uint64_t *pt = convert_entry_into_table(pd[pdi]);
 			ret = kern_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
 			if (RET_ERROR(ret))
 				return ret;
@@ -96,6 +75,8 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pdpt)
 {
 	int ret = 0;
+	if (pdpt == NULL)
+		return ret = KERN_ERROR_INVALID_PDPT;
 	while (vaddr_s < vaddr_e) {
 		int pdpti = (int)GET_PDPTI(vaddr_s);
 		uint64_t bound_e = ((vaddr_s | 0x3fffffffULL) + 1 > vaddr_e) ?
@@ -105,9 +86,7 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 			if (RET_ERROR(ret))
 				return ret;
 		}
-		uint64_t *pd = (uint64_t *)(pdpt[pdpti] &
-		    0xfffffffffffff000ULL);
-		pd = (uint64_t *)make_canonical((void *)pd);
+		uint64_t *pd = convert_entry_into_table(pdpt[pdpti]);
 		ret = kern_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
 		if (RET_ERROR(ret))
 			return ret;
@@ -121,6 +100,8 @@ static int
 kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e)
 {
 	int ret = 0;
+	if (phys_pml4 == NULL)
+		return ret = KERN_ERROR_INVALID_PHYS_PML4;
 	while (vaddr_s < vaddr_e) {
 		int pml4i = (int)GET_PML4I(vaddr_s);
 		uint64_t bound_e = ((vaddr_s | 0x7fffffffffULL) + 1 > vaddr_e) ?
@@ -130,9 +111,7 @@ kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e)
 			if (RET_ERROR(ret))
 				return ret;
 		}
-		uint64_t *pdpt = (uint64_t *)(phys_pml4[pml4i] &
-		    0xfffffffffffff000ULL);
-		pdpt = (uint64_t *)make_canonical((void *)pdpt);
+		uint64_t *pdpt = convert_entry_into_table(phys_pml4[pml4i]);
 		ret = kern_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
 		if (RET_ERROR(ret))
 			return ret;
@@ -146,7 +125,8 @@ static int
 kern_map_physmem_desc(struct mem_desc *desc)
 {
 	int ret = 0;
-	set_entry_flags(desc->type);
+	if (desc->type == RESERVED)
+		return ret;
 	desc->virt_start = desc->phys_start + PHYSMEM_OFFSET;
 	if (phys_pml4 == NULL) {
 		return ret = KERN_ERROR_INVALID_PHYS_PML4;
@@ -179,7 +159,7 @@ kern_map_kernel(void *pdpt)
 	if (phys_pml4 == NULL)
 		return ret = KERN_ERROR_INVALID_PHYS_PML4;
 	int pml4i = (int)((kern_vaddr >> 39) & 0x1ffULL);
-	phys_pml4[pml4i] = (uint64_t)pdpt | PML4E_FLAGS;
+	phys_pml4[pml4i] = ((uint64_t)pdpt & 0xffffffffffffULL) | PML4E_FLAGS;
 	return ret;
 }
 
@@ -199,7 +179,6 @@ void
 kern_main(struct kern_args *kargs)
 {
 	int ret = 0;
-	bios = kargs->bios;
 	kern_vaddr = (uint64_t)_kernel_start;
 	kern_paddr = (uint64_t)kargs->kern_start;
 	kern_size = (uint64_t)_kernel_end - kern_vaddr;
@@ -209,10 +188,10 @@ kern_main(struct kern_args *kargs)
 	ret = kern_init_phys_pml4();
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	ret = kern_map_physmem(&kargs->mem);
+	ret = kern_map_kernel(kargs->kern_pdpt);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	ret = kern_map_kernel(kargs->kern_pdpt);
+	ret = kern_map_physmem(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	kern_set_pml4((uint64_t *)CONVERT_KERNEL_VADDR(phys_pml4));

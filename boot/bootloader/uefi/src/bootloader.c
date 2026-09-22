@@ -102,6 +102,8 @@ efi_load_kernel(void)
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
+		if (phdr.p_vaddr == 0)
+			continue;
 		if (phdr.p_memsz < phdr.p_filesz) {
 			ret = LOAD_ERROR_INVALID_PHDR;
 			goto out_close;
@@ -121,6 +123,10 @@ efi_load_kernel(void)
 	}
 	virt_kernel_start = (size_t)(start);
 	virt_kernel_end = (size_t)(end);
+	if (virt_kernel_start >= virt_kernel_end) {
+		return ret = LOAD_ERROR_INVALID_RANGE;
+		goto out_close;
+	}
 	kernel_size = virt_kernel_end - virt_kernel_start;
 	if (kernel_size == 0) {
 		ret = LOAD_ERROR_NO_PTLOAD;
@@ -153,6 +159,8 @@ efi_load_kernel(void)
 			goto out_free;
 		}
 		if (phdr.p_type != PT_LOAD)
+			continue;
+		if (phdr.p_vaddr == 0)
 			continue;
 		if (((size_t)phdr.p_vaddr < virt_kernel_start) ||
 		    ((size_t)phdr.p_vaddr >= virt_kernel_end)) {
@@ -366,6 +374,35 @@ efi_kargs_add_kern_pdpt(void)
 	return ret;
 }
 
+static inline int
+convert_memtype(EFI_MEMORY_TYPE mem_type)
+{
+	switch (mem_type) {
+	case EfiLoaderCode :
+	case EfiBootServicesCode :
+	case EfiBootServicesData :
+	case EfiConventionalMemory :
+	case EfiPersistentMemory :
+		return AVAILABLE;
+	case EfiReservedMemoryType :
+	case EfiLoaderData :
+	case EfiRuntimeServicesCode :
+	case EfiRuntimeServicesData :
+	case EfiUnusableMemory :
+	case EfiMemoryMappedIO :
+	case EfiMemoryMappedIOPortSpace :
+	case EfiPalCode :
+		return RESERVED;
+	case EfiACPIReclaimMemory :
+		return ACPI_RECLAIM;
+	case EfiACPIMemoryNVS :
+		return ACPI_NVS;
+	default :
+		return UNKNOWN;
+	}
+	return UNKNOWN;
+}
+
 static int
 efi_kargs_add_mmap(UINTN *MapKey)
 {
@@ -394,6 +431,12 @@ efi_kargs_add_mmap(UINTN *MapKey)
 		return ret = KARGS_ERROR_GET_MMAP1;
 	kargs.mem.size = (int)DescriptorSize;
 	kargs.mem.count = (int)(MemoryMapSize / DescriptorSize);
+	for (UINT8 *ptr = (UINT8 *)MemoryMap;
+	    (UINTN)ptr < (UINTN)MemoryMap + MemoryMapSize;
+	    ptr += DescriptorSize) {
+		EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)ptr;
+		desc->Type = convert_memtype(desc->Type);
+	}
 	return ret;
 }
 
@@ -427,7 +470,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	efi_app_size = (size_t)LoadedImage->ImageSize;
 	efi_app_start = (size_t)LoadedImage->ImageBase;
 	efi_app_end = efi_app_start + efi_app_size;
-	kargs.bios = UEFI_BIOS;
 	ret = efi_init_pml4();
 	if (ret != 0)
 		FATAL_ERROR("efi_init_pml4() returned %d with EFI_STATUS %d",

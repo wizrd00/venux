@@ -27,7 +27,6 @@ struct mem_info {
 };
 
 struct kern_args {
-	int bios;
 	void *kern_start;
 	void *kern_pdpt;
 	void *uefi_rt;
