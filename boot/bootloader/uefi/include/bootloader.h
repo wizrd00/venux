@@ -65,7 +65,7 @@
 		SysTab->StandardErrorHandle = NULL;\
 		SysTab->StdErr = NULL;\
 		SysTab->BootServices = NULL;\
-	} while (0);
+	} while (0)
 
 #define HALT()\
 	do {\

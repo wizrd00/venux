@@ -1,0 +1,2 @@
+1.validating Read() calls because I didn't check there return read size, how lazy
+am I?
