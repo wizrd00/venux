@@ -124,7 +124,7 @@ efi_load_kernel(void)
 	virt_kernel_start = (size_t)(start);
 	virt_kernel_end = (size_t)(end);
 	if (virt_kernel_start >= virt_kernel_end) {
-		return ret = LOAD_ERROR_INVALID_RANGE;
+		ret = LOAD_ERROR_INVALID_RANGE;
 		goto out_close;
 	}
 	kernel_size = virt_kernel_end - virt_kernel_start;
