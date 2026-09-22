@@ -322,7 +322,8 @@ efi_map_mmap(void)
 {
 	int ret = 0;
 	size_t mmap_start = (size_t)kargs.mem.info & 0xfffffffffffff000ULL;
-	size_t mmap_end = mmap_start + kargs.mem.size * kargs.mem.count;
+	size_t mmap_end = (size_t)kargs.mem.info + kargs.mem.size *
+	    kargs.mem.count;
 	return efi_addto_pml4(mmap_start, mmap_start, mmap_end);
 }
 
