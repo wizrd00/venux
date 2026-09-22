@@ -69,7 +69,9 @@ efi_load_kernel(void)
 	int ret = 0;
 	unsigned char buffer[BUFFER_SIZE];
 	ret = efi_open_kernel_file();
-	if (ret != 0)
+	if (ret == LOAD_ERROR_OPEN_FILE)
+		goto out_close_volume;
+	else if (ret != 0)
 		goto out;
 	struct boot_elf64_ehdr ehdr;
 	size_t ehdr_size = sizeof(struct boot_elf64_ehdr);
@@ -77,18 +79,18 @@ efi_load_kernel(void)
 	    (VOID *)&ehdr);
 	if (EFI_ERROR(status)) {
 		ret = LOAD_ERROR_READ_FILE;
-		goto out_close;
+		goto out_close_file;
 	}
 	kernel_entry = (size_t)ehdr.e_entry;
 	ret = efi_validate_elf(&ehdr);
 	if (ret != 0)
-		goto out_close;
+		goto out_close_file;
 	struct boot_elf64_phdr phdr;
 	size_t phdr_size = sizeof(struct boot_elf64_phdr);
 	status = KernelFile->SetPosition(KernelFile, ehdr.e_phoff);
 	if (EFI_ERROR(status)) {
 		ret = LOAD_ERROR_SEEK_FILE;
-		goto out_close;
+		goto out_close_file;
 	}
 	bool valid_entry = false;
 	bool first_phdr = true;
@@ -98,7 +100,7 @@ efi_load_kernel(void)
 		    (VOID *)&phdr);
 		if (EFI_ERROR(status)) {
 			ret = LOAD_ERROR_READ_FILE;
-			goto out_close;
+			goto out_close_file;
 		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
@@ -106,7 +108,7 @@ efi_load_kernel(void)
 			continue;
 		if (phdr.p_memsz < phdr.p_filesz) {
 			ret = LOAD_ERROR_INVALID_PHDR;
-			goto out_close;
+			goto out_close_file;
 		}
 		if ((ehdr.e_entry >= phdr.p_vaddr) &&
 		    (ehdr.e_entry < phdr.p_vaddr + phdr.p_memsz))
@@ -125,16 +127,16 @@ efi_load_kernel(void)
 	virt_kernel_end = (size_t)(end);
 	if (virt_kernel_start >= virt_kernel_end) {
 		ret = LOAD_ERROR_INVALID_RANGE;
-		goto out_close;
+		goto out_close_file;
 	}
 	kernel_size = virt_kernel_end - virt_kernel_start;
 	if (kernel_size == 0) {
 		ret = LOAD_ERROR_NO_PTLOAD;
-		goto out_close;
+		goto out_close_file;
 	}
 	if (!valid_entry) {
 		ret = LOAD_ERROR_INVALID_ENTRY;
-		goto out_close;
+		goto out_close_file;
 	}
 	EFI_PHYSICAL_ADDRESS Memory;
 	UINTN Pages = (UINTN)((kernel_size / PAGE_SIZE) + 1);
@@ -142,7 +144,7 @@ efi_load_kernel(void)
 	    EfiLoaderData, Pages, &Memory);
 	if (EFI_ERROR(status)) {
 		ret = LOAD_ERROR_ALLOCATE_PAGE;
-		goto out_close;
+		goto out_close_file;
 	}
 	real_kernel_start = (size_t)Memory;
 	real_kernel_end = real_kernel_start + kernel_size;
@@ -203,11 +205,12 @@ efi_load_kernel(void)
 		}
 	}
 	out_normal :
-		goto out_close;
+		goto out_close_file;
 	out_free :
 		SysTab->BootServices->FreePages(Memory, Pages);
-	out_close :
+	out_close_file :
 		KernelFile->Close(KernelFile);
+	out_close_volume :
 		Volume->Close(Volume);
 	out :
 		return ret;
