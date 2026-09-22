@@ -4,7 +4,7 @@ section .text
 
 kern_set_pml4:
 	mov cr3, rdi
-	hlt
+	ret
 
 kern_get_pml4:
 	mov rax, cr3
