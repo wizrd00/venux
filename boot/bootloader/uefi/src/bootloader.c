@@ -77,7 +77,8 @@ efi_load_kernel(void)
 	size_t ehdr_size = sizeof(struct boot_elf64_ehdr);
 	status = KernelFile->Read(KernelFile, (UINTN *)&ehdr_size,
 	    (VOID *)&ehdr);
-	if (EFI_ERROR(status)) {
+	if ((EFI_ERROR(status)) ||
+	    (ehdr_size < sizeof(struct boot_elf64_ehdr))) {
 		ret = LOAD_ERROR_READ_FILE;
 		goto out_close_file;
 	}
@@ -98,7 +99,8 @@ efi_load_kernel(void)
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
-		if (EFI_ERROR(status)) {
+		if ((EFI_ERROR(status)) ||
+		    (phdr_size < sizeof(struct boot_elf64_phdr))) {
 			ret = LOAD_ERROR_READ_FILE;
 			goto out_close_file;
 		}
@@ -156,7 +158,8 @@ efi_load_kernel(void)
 	for (int i = 0; i < (int)ehdr.e_phnum; i++) {
 		status = KernelFile->Read(KernelFile, (UINTN *)&phdr_size,
 		    (VOID *)&phdr);
-		if (EFI_ERROR(status)) {
+		if ((EFI_ERROR(status)) ||
+		    (phdr_size < sizeof(struct boot_elf64_phdr))) {
 			ret = LOAD_ERROR_READ_FILE;
 			goto out_free;
 		}
@@ -187,9 +190,10 @@ efi_load_kernel(void)
 		while (filesz > 0) {
 			UINTN readsz = (UINTN)((filesz < BUFFER_SIZE) ?
 			    filesz : BUFFER_SIZE);
+			UINTN tmp_readsz = readsz;
 			status = KernelFile->Read(KernelFile, &readsz,
 			    (VOID *)buffer);
-			if (EFI_ERROR(status)) {
+			if ((EFI_ERROR(status)) || (readsz < tmp_readsz)) {
 				ret = LOAD_ERROR_READ_FILE;
 				goto out_free;
 			}
