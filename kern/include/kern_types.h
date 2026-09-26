@@ -7,7 +7,6 @@
 
 #include "kern_globals.h"
 #include "kern_errors.h"
-#include "kern_memtypes.h"
 
 struct mem_desc {
 	uint32_t type;

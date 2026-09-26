@@ -3,7 +3,6 @@ BITS 64
 INVALID_BOUNDARY_1 equ 1
 INVALID_BOUNDARY_2 equ 2
 INVALID_BOUNDARY_3 equ 3
-KERN_MAIN_RETURNED equ 4
 
 extern _kernel_base
 extern _kernel_gap
@@ -50,7 +49,7 @@ kern_init:
 	mov rdi, rsp
 	mov rsp, _kernel_stack_end
 	call kern_main
-	mov rdi, KERN_MAIN_RETURNED
+	mov rdi, 0
 	mov rsi, 0
 	jmp kern_panic
 
