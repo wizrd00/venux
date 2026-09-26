@@ -3,7 +3,7 @@
 
 #include "kern_types.h"
 #include "palloc.h"
-#include "paging.h"
+#include "pmm.h"
 
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\

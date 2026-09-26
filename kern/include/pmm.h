@@ -1,5 +1,5 @@
-#ifndef _KERN_PAGING_H
-#define _KERN_PAGING_H
+#ifndef _KERN_PMM_H
+#define _KERN_PMM_H
 
 #include "kern_types.h"
 #include "palloc.h"
@@ -18,6 +18,8 @@
 
 #define CONVERT_KERNEL_VADDR(_addr) ((uint64_t)_addr - KERNEL_OFFSET)
 #define CONVERT_KERNEL_PADDR(_addr) ((uint64_t)_addr + KERNEL_OFFSET)
+#define CONVERT_PHYSMEM_VADDR(_addr) ((uint64_t)_addr - PHYSMEM_OFFSET)
+#define CONVERT_PHYSMEM_PADDR(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
 
 #define ALLOC_PDPT(_entry, _ret, _flags)\
 	do {\
@@ -43,11 +45,11 @@
 #define GET_PDI(_addr) ((_addr >> 21) & 0x1ffULL)
 #define GET_PTI(_addr) ((_addr >> 12) & 0x1ffULL)
 
-void kern_set_pml4(uint64_t *pml4);
+void pmm_set_pml4(uint64_t *pml4);
 
-void kern_get_pml4(uint64_t **pml4);
+void pmm_get_pml4(uint64_t **pml4);
 
-int kern_map_addr_range(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+int pmm_map_region(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pml4);
 
 #endif

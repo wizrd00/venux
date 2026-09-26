@@ -6,7 +6,6 @@ extern uint8_t _kernel_end[];
 uint64_t kern_paddr = 0;
 uint64_t kern_vaddr = 0;
 uint64_t kern_size = 0;
-
 uint64_t *phys_pml4 = NULL;
 
 static int
@@ -15,11 +14,11 @@ kern_map_physmem_desc(struct mem_desc *desc)
 	int ret = 0;
 	if (desc->type == RESERVED)
 		return ret;
-	desc->virt_start = desc->phys_start + PHYSMEM_OFFSET;
+	desc->virt_start = CONVERT_PHYSMEM_PADDR(desc->phys_start);
 	if (phys_pml4 == NULL) {
 		return ret = KERN_ERROR_INVALID_PHYS_PML4;
 	}
-	return kern_map_addr_range(desc->phys_start, desc->virt_start,
+	return pmm_map_region(desc->phys_start, desc->virt_start,
 	    desc->virt_start + desc->page_count * PAGE_SIZE, phys_pml4);
 }
 
@@ -50,6 +49,7 @@ kern_map_kernel(void *pdpt)
 	if (ENTRY_PRESENT(phys_pml4[pml4i]))
 		return ret = KERN_ERROR_PAGE_ALREADY_PRESENT;
 	phys_pml4[pml4i] = ((uint64_t)pdpt & 0xffffffffffffULL) | PML4E_FLAGS;
+
 	return ret;
 }
 
@@ -84,6 +84,6 @@ kern_main(struct kern_args *kargs)
 	ret = kern_map_physmem(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	kern_set_pml4((uint64_t *)CONVERT_KERNEL_VADDR(phys_pml4));
+	pmm_set_pml4((uint64_t *)CONVERT_KERNEL_VADDR(phys_pml4));
 	return;
 }

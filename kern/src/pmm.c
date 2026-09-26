@@ -1,4 +1,4 @@
-#include "paging.h"
+#include "pmm.h"
 
 static uint64_t *
 convert_entry_into_table(uint64_t entry)
@@ -11,7 +11,7 @@ convert_entry_into_table(uint64_t entry)
 }
 
 static int
-kern_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+pmm_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pt)
 {
 	int ret = 0;
@@ -29,7 +29,7 @@ kern_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 }
 
 static int
-kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+pmm_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pd)
 {
 	int ret = 0;
@@ -51,7 +51,7 @@ kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 					return ret;
 			}
 			uint64_t *pt = convert_entry_into_table(pd[pdi]);
-			ret = kern_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
+			ret = pmm_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
 			if (RET_ERROR(ret))
 				return ret;
 		}
@@ -62,7 +62,7 @@ kern_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 }
 
 static int
-kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+pmm_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pdpt)
 {
 	int ret = 0;
@@ -78,7 +78,7 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pd = convert_entry_into_table(pdpt[pdpti]);
-		ret = kern_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
+		ret = pmm_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -88,7 +88,7 @@ kern_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 }
 
 static int
-kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pml4)
 {
 	int ret = 0;
@@ -104,7 +104,7 @@ kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pdpt = convert_entry_into_table(pml4[pml4i]);
-		ret = kern_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
+		ret = pmm_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -114,8 +114,8 @@ kern_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 }
 
 int
-kern_map_addr_range(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
+pmm_map_region(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pml4)
 {
-	return kern_map_into_pml4(paddr_s, vaddr_s, vaddr_e, pml4);
+	return pmm_map_into_pml4(paddr_s, vaddr_s, vaddr_e, pml4);
 }
