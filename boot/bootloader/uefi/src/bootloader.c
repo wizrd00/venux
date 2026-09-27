@@ -378,27 +378,28 @@ static inline int
 convert_memtype(EFI_MEMORY_TYPE mem_type)
 {
 	switch (mem_type) {
-	case EfiLoaderCode :
 	case EfiBootServicesCode :
 	case EfiBootServicesData :
 	case EfiConventionalMemory :
 	case EfiPersistentMemory :
-		return AVAILABLE;
+		return MEMTYPE_AVAILABLE;
 	case EfiReservedMemoryType :
-	case EfiLoaderData :
 	case EfiRuntimeServicesCode :
 	case EfiRuntimeServicesData :
 	case EfiUnusableMemory :
 	case EfiMemoryMappedIO :
 	case EfiMemoryMappedIOPortSpace :
 	case EfiPalCode :
-		return RESERVED;
+		return MEMTYPE_RESERVED;
+	case EfiLoaderCode :
+	case EfiLoaderData :
+		return MEMTYPE_BOOTLOADER;
 	case EfiACPIReclaimMemory :
-		return ACPI_RECLAIM;
+		return MEMTYPE_ACPI_RECLAIM;
 	case EfiACPIMemoryNVS :
-		return ACPI_NVS;
+		return MEMTYPE_ACPI_NVS;
 	default :
-		return UNKNOWN;
+		return MEMTYPE_UNKNOWN;
 	}
 	return UNKNOWN;
 }
