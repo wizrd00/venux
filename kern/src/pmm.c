@@ -1,7 +1,7 @@
 #include "pmm.h"
 
 static uint64_t *
-convert_entry_into_table(uint64_t entry)
+extract_addr(uint64_t entry)
 {
 	if (((entry >> 47) & 1) == 1)
 		entry |= 0xffff000000000000ULL;
@@ -50,7 +50,7 @@ pmm_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				if (RET_ERROR(ret))
 					return ret;
 			}
-			uint64_t *pt = convert_entry_into_table(pd[pdi]);
+			uint64_t *pt = extract_addr(pd[pdi]);
 			ret = pmm_map_into_pt(paddr_s, vaddr_s, bound_e, pt);
 			if (RET_ERROR(ret))
 				return ret;
@@ -77,7 +77,7 @@ pmm_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 			if (RET_ERROR(ret))
 				return ret;
 		}
-		uint64_t *pd = convert_entry_into_table(pdpt[pdpti]);
+		uint64_t *pd = extract_addr(pdpt[pdpti]);
 		ret = pmm_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
 		if (RET_ERROR(ret))
 			return ret;
@@ -103,7 +103,7 @@ pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 			if (RET_ERROR(ret))
 				return ret;
 		}
-		uint64_t *pdpt = convert_entry_into_table(pml4[pml4i]);
+		uint64_t *pdpt = extract_addr(pml4[pml4i]);
 		ret = pmm_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
 		if (RET_ERROR(ret))
 			return ret;
