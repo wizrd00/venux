@@ -6,6 +6,7 @@
 #include <stdarg.h>
 
 #include <kern_types.h>
+#include <pmm.h>
 
 #include "Uefi.h"
 #include "Protocol/SimpleFileSystem.h"
@@ -51,8 +52,6 @@
 #define KARGS_ERROR_ALLOCATE_POOL 5
 
 #define PAGE_ALIGNED(addr) ((addr & 0xfffULL) == 0)
-
-#define ENTRY_PRESENT(entry) ((entry & 0x1ULL) == 1)
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 

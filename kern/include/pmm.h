@@ -4,11 +4,12 @@
 #include "kern_types.h"
 #include "palloc.h"
 
-#define UNKNOWN 0
-#define AVAILABLE 1
-#define RESERVED 2
-#define ACPI_RECLAIM 3
-#define ACPI_NVS 4
+#define MEMTYPE_UNKNOWN 0
+#define MEMTYPE_AVAILABLE 1
+#define MEMTYPE_RESERVED 2
+#define MEMTYPE_BOOTLOADER 3
+#define MEMTYPE_ACPI_RECLAIM 4
+#define MEMTYPE_ACPI_NVS 5
 
 #define PML4E_FLAGS 0x003ULL
 #define PDPTE_FLAGS 0x003ULL
@@ -38,7 +39,7 @@
 #define ALLOC_PT(_entry, _ret, _flags)\
 	do {ALLOC_PDPT(_entry, _ret, _flags);} while (0)
 
-#define ENTRY_PRESENT(_entry) ((_entry & 0x1) == 1)
+#define ENTRY_PRESENT(_entry) ((_entry & 0x1ULL) == 1)
 
 #define GET_PML4I(_addr) ((_addr >> 39) & 0x1ffULL)
 #define GET_PDPTI(_addr) ((_addr >> 30) & 0x1ffULL)

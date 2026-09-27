@@ -401,7 +401,7 @@ convert_memtype(EFI_MEMORY_TYPE mem_type)
 	default :
 		return MEMTYPE_UNKNOWN;
 	}
-	return UNKNOWN;
+	return MEMTYPE_UNKNOWN;
 }
 
 static int
