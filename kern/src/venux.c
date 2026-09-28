@@ -1,12 +1,43 @@
 #include "venux.h"
 
-extern uint8_t _kernel_start[];
-extern uint8_t _kernel_end[];
+uint64_t kern_paddr;
+uint64_t kern_vaddr;
+uint64_t kern_size;
+uint64_t *phys_pml4;
+static uint64_t kern_text_vaddr;
+static uint64_t kern_text_size;
+static uint64_t kern_rodata_vaddr;
+static uint64_t kern_rodata_size;
+static uint64_t kern_data_vaddr;
+static uint64_t kern_data_size;
+static uint64_t kern_bss_vaddr;
+static uint64_t kern_bss_size;
+static uint64_t kern_arena_vaddr;
+static uint64_t kern_arena_size;
+static uint64_t kern_stack_vaddr;
+static uint64_t kern_stack_size;
 
-uint64_t kern_paddr = 0;
-uint64_t kern_vaddr = 0;
-uint64_t kern_size = 0;
-uint64_t *phys_pml4 = NULL;
+static uint64_t
+extract_addr(uint64_t entry)
+{
+	if (((entry >> 47) & 1) == 1)
+		entry |= 0xffff000000000000ULL;
+	else
+		entry &= 0x0000fffffffff000ULL;
+	return entry;
+}
+
+static uint64_t *
+extract_kernel_vaddr(uint64_t entry)
+{
+	return (uint64_t *)CONVERT_KERNEL_PADDR(extract_addr(entry));
+}
+
+static uint64_t *
+extract_physmem_vaddr(uint64_t entry)
+{
+	return (uint64_t *)CONVERT_PHYSMEM_PADDR(extract_addr(entry));
+}
 
 static int
 kern_verify_memtypes(struct mem_info *mem)
@@ -46,10 +77,22 @@ kern_verify_memtypes(struct mem_info *mem)
 }
 
 static int
+kern_init_pml4(void)
+{
+	int ret = 0;
+	if (phys_pml4 == NULL) {
+		ALLOC_PML4(phys_pml4, ret);
+		if (RET_ERROR(ret))
+			return ret;
+	}
+	return ret;
+}
+
+static int
 kern_map_kernel(void *pdpt)
 {
 	if (phys_pml4 == NULL)
-		return KERN_ERROR_INVALID_PHYS_PML4;
+		return KERN_ERROR_INVALID_PML4;
 	int pml4i = (int)((kern_vaddr >> 39) & 0x1ffULL);
 	if (ENTRY_PRESENT(phys_pml4[pml4i]))
 		return KERN_ERROR_PAGE_ALREADY_PRESENT;
@@ -62,10 +105,11 @@ kern_map_desc(struct mem_desc *desc)
 {
 	desc->virt_start = CONVERT_PHYSMEM_PADDR(desc->phys_start);
 	if (phys_pml4 == NULL) {
-		return KERN_ERROR_INVALID_PHYS_PML4;
+		return KERN_ERROR_INVALID_PML4;
 	}
 	return pmm_map_region(desc->phys_start, desc->virt_start,
-	    desc->virt_start + desc->page_count * PAGE_SIZE, phys_pml4);
+	    desc->virt_start + desc->page_count * PAGE_SIZE, phys_pml4,
+	    extract_kernel_vaddr);
 }
 
 static int
@@ -105,14 +149,52 @@ kern_map_physmem(struct mem_info *mem, int (*desc_mapper)(struct mem_desc *))
 }
 
 static int
-kern_init_pml4(void)
+kern_secure_sections(void)
 {
 	int ret = 0;
-	if (phys_pml4 == NULL) {
-		ALLOC_PML4(phys_pml4, ret);
-		if (RET_ERROR(ret))
-			return ret;
-	}
+	kern_text_vaddr = (uint64_t)_kernel_text_start;
+	kern_text_size = (uint64_t)(_kernel_text_end - _kernel_text_start);
+	ret = pmm_set_permission(kern_text_vaddr,
+	    kern_text_vaddr + kern_text_size, 0x5, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
+	kern_rodata_vaddr = (uint64_t)_kernel_rodata_start;
+	kern_rodata_size = (uint64_t)(_kernel_rodata_end -
+	    _kernel_rodata_start);
+	ret = pmm_set_permission(kern_rodata_vaddr,
+	    kern_rodata_vaddr + kern_rodata_size, 0x4, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
+	kern_data_vaddr = (uint64_t)_kernel_data_start;
+	kern_data_size = (uint64_t)(_kernel_data_end - _kernel_data_start);
+	ret = pmm_set_permission(kern_data_vaddr,
+	    kern_data_vaddr + kern_data_size, 0x6, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
+	kern_bss_vaddr = (uint64_t)_kernel_bss_start;
+	kern_bss_size = (uint64_t)(_kernel_bss_end - _kernel_bss_start);
+	ret = pmm_set_permission(kern_bss_vaddr,
+	    kern_bss_vaddr + kern_bss_size, 0x6, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
+	kern_arena_vaddr = (uint64_t)_kernel_arena_start;
+	kern_arena_size = (uint64_t)(_kernel_arena_end - _kernel_arena_start);
+	ret = pmm_set_permission(kern_arena_vaddr,
+	    kern_arena_vaddr + kern_arena_size, 0x6, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
+	kern_stack_vaddr = (uint64_t)_kernel_stack_start;
+	kern_stack_size = (uint64_t)(_kernel_stack_end - _kernel_stack_start);
+	ret = pmm_set_permission(kern_stack_vaddr,
+	    kern_stack_vaddr + kern_stack_size, 0x6, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		return ret;
 	return ret;
 }
 
@@ -149,5 +231,8 @@ kern_main(struct kern_args *kargs)
 	kargs->kern_pdpt = (void *)CONVERT_PHYSMEM_PADDR(kargs->kern_pdpt);
 	kargs->acpi = (void *)CONVERT_PHYSMEM_PADDR(kargs->acpi);
 	kargs->mem.info = (void *)CONVERT_PHYSMEM_PADDR(kargs->mem.info);
+	ret = kern_secure_sections();
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
 	return;
 }

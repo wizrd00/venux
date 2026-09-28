@@ -22,6 +22,10 @@
 #define CONVERT_PHYSMEM_VADDR(_addr) ((uint64_t)_addr - PHYSMEM_OFFSET)
 #define CONVERT_PHYSMEM_PADDR(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
 
+#define VALID_PERMISSION(_perm) ((_perm & 0xf8) == 0)
+
+#define PDE_HUGE_PAGE(_pde) ((_pde & 0x80) != 0)
+
 #define ALLOC_PDPT(_entry, _ret, _flags)\
 	do {\
 		uint64_t *_tmp = (uint64_t *)kern_palloc(1);\
@@ -51,6 +55,9 @@ void pmm_set_pml4(uint64_t *pml4);
 void pmm_get_pml4(uint64_t **pml4);
 
 int pmm_map_region(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pml4);
+    uint64_t *pml4, uint64_t * (*)(uint64_t));
+
+int pmm_set_permission(uint64_t vaddr_s, uint64_t vaddr_e, uint8_t perm,
+    uint64_t *pml4, uint64_t * (*)(uint64_t));
 
 #endif

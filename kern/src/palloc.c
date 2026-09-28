@@ -1,8 +1,5 @@
 #include "palloc.h"
 
-extern uint8_t _kernel_arena_start[];
-extern uint8_t _kernel_arena_end[];
-
 uint8_t *arena = _kernel_arena_start;
 static size_t size, offset;
 

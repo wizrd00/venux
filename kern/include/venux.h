@@ -14,6 +14,23 @@
 
 void kern_main(struct kern_args *);
 
+extern uint8_t _kernel_start[];
+extern uint8_t _kernel_end[];
+extern uint8_t _kernel_text_start[];
+extern uint8_t _kernel_text_end[];
+extern uint8_t _kernel_rodata_start[];
+extern uint8_t _kernel_rodata_end[];
+extern uint8_t _kernel_data_start[];
+extern uint8_t _kernel_data_end[];
+extern uint8_t _kernel_bss_start[];
+extern uint8_t _kernel_bss_end[];
+extern uint8_t _kernel_arena_start[];
+extern uint8_t _kernel_arena_end[];
+extern uint8_t _kernel_stack_start[];
+extern uint8_t _kernel_stack_end[];
+
+extern uint64_t kern_paddr;
+extern uint64_t kern_vaddr;
 extern uint64_t *phys_pml4;
 
 #endif

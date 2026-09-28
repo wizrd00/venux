@@ -1,15 +1,5 @@
 #include "pmm.h"
 
-static uint64_t *
-extract_addr(uint64_t entry)
-{
-	if (((entry >> 47) & 1) == 1)
-		entry |= 0xffff000000000000ULL;
-	else
-		entry &= 0x0000fffffffff000ULL;
-	return (uint64_t *)CONVERT_KERNEL_PADDR(entry);
-}
-
 static int
 pmm_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
     uint64_t *pt)
@@ -30,7 +20,7 @@ pmm_map_into_pt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 
 static int
 pmm_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pd)
+    uint64_t *pd, uint64_t * (*extract_addr)(uint64_t))
 {
 	int ret = 0;
 	if (pd == NULL)
@@ -63,7 +53,7 @@ pmm_map_into_pd(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 
 static int
 pmm_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pdpt)
+    uint64_t *pdpt, uint64_t * (*extract_addr)(uint64_t))
 {
 	int ret = 0;
 	if (pdpt == NULL)
@@ -78,7 +68,8 @@ pmm_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pd = extract_addr(pdpt[pdpti]);
-		ret = pmm_map_into_pd(paddr_s, vaddr_s, bound_e, pd);
+		ret = pmm_map_into_pd(paddr_s, vaddr_s, bound_e, pd,
+		    extract_addr);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -89,11 +80,11 @@ pmm_map_into_pdpt(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 
 static int
 pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pml4)
+    uint64_t *pml4, uint64_t * (*extract_addr)(uint64_t))
 {
 	int ret = 0;
 	if (pml4 == NULL)
-		return ret = KERN_ERROR_INVALID_PHYS_PML4;
+		return ret = KERN_ERROR_INVALID_PML4;
 	while (vaddr_s < vaddr_e) {
 		int pml4i = (int)GET_PML4I(vaddr_s);
 		uint64_t bound_e = ((vaddr_s | 0x7fffffffffULL) + 1 > vaddr_e) ?
@@ -104,7 +95,8 @@ pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 				return ret;
 		}
 		uint64_t *pdpt = extract_addr(pml4[pml4i]);
-		ret = pmm_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt);
+		ret = pmm_map_into_pdpt(paddr_s, vaddr_s, bound_e, pdpt,
+		    extract_addr);
 		if (RET_ERROR(ret))
 			return ret;
 		paddr_s += bound_e - vaddr_s;
@@ -113,9 +105,69 @@ pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 	return ret;
 }
 
+static int
+pmm_set_entry_permission(uint64_t *entry, uint8_t perm)
+{
+	return 0;
+}
+
+static int
+pmm_set_page_permission(uint64_t vaddr, uint64_t *psize, uint8_t perm,
+    uint64_t *pml4, uint64_t * (*extract_addr)(uint64_t))
+{
+	int pml4i = (int)GET_PML4I(vaddr);
+	if (!ENTRY_PRESENT(pml4[pml4i]))
+		return KERN_ERROR_PML4E_NOT_PRESENT;
+	uint64_t *pdpt = extract_addr(pml4[pml4i]);
+	int pdpti = (int)GET_PDPTI(vaddr);
+	if (!ENTRY_PRESENT(pdpt[pdpti]))
+		return KERN_ERROR_PDPTE_NOT_PRESENT;
+	uint64_t *pd = extract_addr(pdpt[pdpti]);
+	int pdi = (int)GET_PDI(vaddr);
+	if (!ENTRY_PRESENT(pd[pdi]))
+		return KERN_ERROR_PDE_NOT_PRESENT;
+	if (PDE_HUGE_PAGE(pd[pdi])) {
+		pmm_set_entry_permission(pd + pdi, perm);
+		*psize = HUGE_PAGE_SIZE;
+		return 0;
+	}
+	uint64_t *pt = extract_addr(pd[pdi]);
+	int pti = (int)GET_PTI(vaddr);
+	if (!ENTRY_PRESENT(pt[pti]))
+		return KERN_ERROR_PAGE_NOT_PRESENT;
+	pmm_set_entry_permission(pt + pti, perm);
+	return 0;
+}
+
 int
 pmm_map_region(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pml4)
+    uint64_t *pml4, uint64_t * (*extract_addr)(uint64_t))
 {
-	return pmm_map_into_pml4(paddr_s, vaddr_s, vaddr_e, pml4);
+	return pmm_map_into_pml4(paddr_s, vaddr_s, vaddr_e, pml4, extract_addr);
+}
+
+int
+pmm_set_permission(uint64_t vaddr_s, uint64_t vaddr_e, uint8_t perm,
+    uint64_t *pml4, uint64_t * (*extract_addr)(uint64_t))
+{
+	int ret = 0;
+	if (pml4 == NULL)
+		return ret = KERN_ERROR_INVALID_PML4;
+	if ((!PAGE_ALIGNED(vaddr_s)) || (!PAGE_ALIGNED(vaddr_e)))
+		return ret = KERN_ERROR_ADDR_NOT_PAGE_ALIGNED;
+	if (vaddr_s == vaddr_e)
+		return ret = KERN_ERROR_INVALID_REGION;
+	if (!VALID_PERMISSION(perm))
+		return ret = KERN_ERROR_INVALID_PERMISSION;
+	while (vaddr_s < vaddr_e) {
+		uint64_t psize;
+		ret = pmm_set_page_permission(vaddr_s, &psize, perm, pml4,
+		    extract_addr);
+		if (RET_ERROR(ret))
+			return ret;
+		if (vaddr_s + psize > vaddr_e)
+			return ret = KERN_ERROR_TOO_SMALL_REGION;
+		vaddr_s += psize;
+	}
+	return ret;
 }

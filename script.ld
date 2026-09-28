@@ -24,33 +24,33 @@ SECTIONS
 	.text : ALIGN(4K) {
 		_kernel_text_start = .;
 		*(.text*)
-		_kernel_text_end = .;
 	} :text
 	.rodata : ALIGN(4K) {
+		_kernel_text_end = .;
 		_kernel_rodata_start = .;
 		*(.rodata*)
-		_kernel_rodata_end = .;
 	} :rodata
 	.data : ALIGN(4K) {
+		_kernel_rodata_end = .;
 		_kernel_data_start = .;
 		*(.data*)
-		_kernel_data_end = .;
 	} :data
 	.bss : ALIGN(4K) {
+		_kernel_data_end = .;
 		_kernel_bss_start = .;
 		*(.bss*)
-		_kernel_bss_end = .;
 	} :bss
 	.arena : ALIGN(4K) {
+		_kernel_bss_end = .;
 		_kernel_arena_start = .;
 		. += _kernel_arena_size;
-		_kernel_arena_end = .;
 	} :arena
 	.stack : ALIGN(4K) {
+		_kernel_arena_end = .;
 		_kernel_stack_start = .;
 		. += _kernel_stack_size;
-		_kernel_stack_end = .;
 	} :stack
+	_kernel_stack_end = .;
 	_kernel_end = .;
 }
 
