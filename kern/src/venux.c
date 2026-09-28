@@ -3,14 +3,13 @@
 extern uint8_t _kernel_start[];
 extern uint8_t _kernel_end[];
 
-struct kern_args args;
 uint64_t kern_paddr = 0;
 uint64_t kern_vaddr = 0;
 uint64_t kern_size = 0;
 uint64_t *phys_pml4 = NULL;
 
 static int
-kern_find_critical_memtypes(struct mem_info *mem)
+kern_verify_memtypes(struct mem_info *mem)
 {
 	int ret = 0;
 	int flags = 0;
@@ -124,12 +123,10 @@ kern_main(struct kern_args *kargs)
 	kern_vaddr = (uint64_t)_kernel_start;
 	kern_paddr = (uint64_t)kargs->kern_start;
 	kern_size = (uint64_t)_kernel_end - kern_vaddr;
-	args.kern_start = kargs->kern_start;
-	args.kern_pdpt = kargs->kern_pdpt;
 	ret = kern_arena_init();
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	ret = kern_find_critical_memtypes(&kargs->mem);
+	ret = kern_verify_memtypes(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	ret = kern_init_pml4();
@@ -147,11 +144,10 @@ kern_main(struct kern_args *kargs)
 	ret = kern_map_physmem(&kargs->mem, kern_map_acpi_desc);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	args.acpi = (void *)CONVERT_PHYSMEM_PADDR(kargs->acpi);
 	pmm_set_pml4((uint64_t *)CONVERT_KERNEL_VADDR(phys_pml4));
 	kargs = (struct kern_args *)CONVERT_PHYSMEM_PADDR(kargs);
-	args.mem.info = (void *)CONVERT_PHYSMEM_PADDR(kargs->mem.info);
-	args.mem.size = kargs->mem.size;
-	args.mem.count = kargs->mem.count;
+	kargs->kern_pdpt = (void *)CONVERT_PHYSMEM_PADDR(kargs->kern_pdpt);
+	kargs->acpi = (void *)CONVERT_PHYSMEM_PADDR(kargs->acpi);
+	kargs->mem.info = (void *)CONVERT_PHYSMEM_PADDR(kargs->mem.info);
 	return;
 }
