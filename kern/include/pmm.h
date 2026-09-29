@@ -23,6 +23,9 @@
 #define CONVERT_PHYSMEM_PADDR(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
 
 #define VALID_PERMISSION(_perm) ((_perm & 0xf8) == 0)
+#define READABLE_PERMISSION(_perm) ((_perm & 0x4) != 0)
+#define WRITABLE_PERMISSION(_perm) ((_perm & 0x2) != 0)
+#define EXECUTABLE_PERMISSION(_perm) ((_perm & 0x1) != 0)
 
 #define PDE_HUGE_PAGE(_pde) ((_pde & 0x80) != 0)
 
@@ -53,6 +56,8 @@
 void pmm_set_pml4(uint64_t *);
 
 void pmm_get_pml4(uint64_t **);
+
+void pmm_set_efer_nxe(void);
 
 int pmm_map_region(uint64_t, uint64_t, uint64_t, uint64_t *,
     uint64_t * (*)(uint64_t));

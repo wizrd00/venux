@@ -1,0 +1,2 @@
+1.checking is there any EFER register or not (with cpuid) and then call
+  pmm_set_efer_nxe()

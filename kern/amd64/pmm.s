@@ -11,5 +11,13 @@ pmm_get_pml4:
 	mov [rdi], rax
 	ret
 
+pmm_set_efer_nxe:
+	mov ecx, 0xc0000080
+	rdmsr
+	or eax, (1 << 11)
+	wrmsr
+	ret
+
 global pmm_set_pml4
 global pmm_get_pml4
+global pmm_set_efer_nxe

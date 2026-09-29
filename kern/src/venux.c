@@ -152,10 +152,11 @@ static int
 kern_secure_sections(void)
 {
 	int ret = 0;
+	pmm_set_efer_nxe();
 	kern_text_vaddr = (uint64_t)_kernel_text_start;
 	kern_text_size = (uint64_t)(_kernel_text_end - _kernel_text_start);
 	ret = pmm_set_permission(kern_text_vaddr,
-	    kern_text_vaddr + kern_text_size, 0x5, phys_pml4,
+	    kern_text_vaddr + kern_text_size, 0x1, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;
@@ -163,35 +164,35 @@ kern_secure_sections(void)
 	kern_rodata_size = (uint64_t)(_kernel_rodata_end -
 	    _kernel_rodata_start);
 	ret = pmm_set_permission(kern_rodata_vaddr,
-	    kern_rodata_vaddr + kern_rodata_size, 0x4, phys_pml4,
+	    kern_rodata_vaddr + kern_rodata_size, 0x0, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;
 	kern_data_vaddr = (uint64_t)_kernel_data_start;
 	kern_data_size = (uint64_t)(_kernel_data_end - _kernel_data_start);
 	ret = pmm_set_permission(kern_data_vaddr,
-	    kern_data_vaddr + kern_data_size, 0x6, phys_pml4,
+	    kern_data_vaddr + kern_data_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;
 	kern_bss_vaddr = (uint64_t)_kernel_bss_start;
 	kern_bss_size = (uint64_t)(_kernel_bss_end - _kernel_bss_start);
 	ret = pmm_set_permission(kern_bss_vaddr,
-	    kern_bss_vaddr + kern_bss_size, 0x6, phys_pml4,
+	    kern_bss_vaddr + kern_bss_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;
 	kern_arena_vaddr = (uint64_t)_kernel_arena_start;
 	kern_arena_size = (uint64_t)(_kernel_arena_end - _kernel_arena_start);
 	ret = pmm_set_permission(kern_arena_vaddr,
-	    kern_arena_vaddr + kern_arena_size, 0x6, phys_pml4,
+	    kern_arena_vaddr + kern_arena_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;
 	kern_stack_vaddr = (uint64_t)_kernel_stack_start;
 	kern_stack_size = (uint64_t)(_kernel_stack_end - _kernel_stack_start);
 	ret = pmm_set_permission(kern_stack_vaddr,
-	    kern_stack_vaddr + kern_stack_size, 0x6, phys_pml4,
+	    kern_stack_vaddr + kern_stack_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		return ret;

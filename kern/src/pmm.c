@@ -108,6 +108,12 @@ pmm_map_into_pml4(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
 static int
 pmm_set_entry_permission(uint64_t *entry, uint8_t perm)
 {
+	if (READABLE_PERMISSION(perm))
+		*entry |= (1ULL << 2);
+	if (WRITABLE_PERMISSION(perm))
+		*entry |= (1ULL << 1);
+	if (!EXECUTABLE_PERMISSION(perm))
+		*entry |= (1ULL << 63);
 	return 0;
 }
 
