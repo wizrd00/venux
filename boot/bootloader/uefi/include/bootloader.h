@@ -55,6 +55,9 @@
 
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
 
+#define PRINT_START() efi_printf("VENUX Bootloader\r\n")
+#define PRINT_END() efi_printf("Start VENUX\r\n");
+
 #define MODIFY_SYSTAB()\
 	do {\
 		SysTab->ConsoleInHandle = NULL;\
