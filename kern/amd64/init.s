@@ -1,4 +1,5 @@
 BITS 64
+default rel
 
 INVALID_BOUNDARY_1 equ 1
 INVALID_BOUNDARY_2 equ 2

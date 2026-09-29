@@ -1,4 +1,5 @@
 BITS 64
+default rel
 
 global efi_halt
 

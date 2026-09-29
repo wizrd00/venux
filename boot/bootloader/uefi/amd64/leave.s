@@ -1,4 +1,5 @@
 BITS 64
+default rel
 
 extern pml4
 extern kargs
