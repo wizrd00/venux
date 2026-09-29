@@ -17,7 +17,6 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-std=c99 \
 	-nostdlib \
 	-ffreestanding \
-	-fshort-wchar \
 	-fno-stack-protector \
 	-fno-exceptions \
 	-fno-threadsafe-statics \
@@ -25,6 +24,7 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-fno-pic \
 	-fno-pie \
 	-ferror-limit=1 \
+	-mcmodel=kernel \
 	-mno-red-zone \
 	-mno-sse \
 	-mno-mmx \

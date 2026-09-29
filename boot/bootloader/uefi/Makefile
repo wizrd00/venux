@@ -8,6 +8,7 @@ BOOTLOADER_ASM := $(wildcard boot/bootloader/uefi/amd64/*.s)
 BOOTLOADER_OBJ := $(patsubst boot/bootloader/uefi/src/%.c, $(BIN_DIR)/%.c.o, $(BOOTLOADER_SRC)) $(patsubst boot/bootloader/uefi/amd64/%.s, $(BIN_DIR)/%.s.o, $(BOOTLOADER_ASM))
 BOOTLOADER_CFLAGS_FINALL := -target x86_64-unknown-windows \
 	-nostdlib \
+	-fshort-wchar \
 	-mno-red-zone \
 	-Wl,-entry:efi_main \
 	-Wl,-subsystem:efi_application \
