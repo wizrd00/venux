@@ -136,6 +136,7 @@ pmm_set_page_permission(uint64_t vaddr, uint64_t *psize, uint8_t perm,
 	if (!ENTRY_PRESENT(pt[pti]))
 		return KERN_ERROR_PAGE_NOT_PRESENT;
 	pmm_set_entry_permission(pt + pti, perm);
+	*psize = PAGE_SIZE;
 	return 0;
 }
 

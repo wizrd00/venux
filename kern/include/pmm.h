@@ -50,14 +50,14 @@
 #define GET_PDI(_addr) ((_addr >> 21) & 0x1ffULL)
 #define GET_PTI(_addr) ((_addr >> 12) & 0x1ffULL)
 
-void pmm_set_pml4(uint64_t *pml4);
+void pmm_set_pml4(uint64_t *);
 
-void pmm_get_pml4(uint64_t **pml4);
+void pmm_get_pml4(uint64_t **);
 
-int pmm_map_region(uint64_t paddr_s, uint64_t vaddr_s, uint64_t vaddr_e,
-    uint64_t *pml4, uint64_t * (*)(uint64_t));
+int pmm_map_region(uint64_t, uint64_t, uint64_t, uint64_t *,
+    uint64_t * (*)(uint64_t));
 
-int pmm_set_permission(uint64_t vaddr_s, uint64_t vaddr_e, uint8_t perm,
-    uint64_t *pml4, uint64_t * (*)(uint64_t));
+int pmm_set_permission(uint64_t, uint64_t, uint8_t, uint64_t *,
+    uint64_t * (*)(uint64_t));
 
 #endif
