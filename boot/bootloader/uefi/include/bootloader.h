@@ -6,7 +6,7 @@
 #include <stdarg.h>
 
 #include <kern_types.h>
-#include <pmm.h>
+#include <vmm.h>
 
 #include "Uefi.h"
 #include "Protocol/SimpleFileSystem.h"

@@ -20,7 +20,8 @@ vmm_set_efer_nxe:
 	ret
 
 vmm_reload_tlb:
-	mov cr3, cr3
+	mov rax, cr3
+	mov cr3, rax
 	ret
 
 global vmm_set_pml4

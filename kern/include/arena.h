@@ -1,11 +1,11 @@
-#ifndef _KERN_PALLOC_H
-#define _KERN_PALLOC_H
+#ifndef _KERN_ARENA_H
+#define _KERN_ARENA_H
 
 #include "kern_types.h"
 
 int kern_init_arena(void);
 
-void *kern_palloc(size_t);
+void *kern_get_arena_pages(size_t);
 
 extern uint8_t _kernel_arena_start[];
 extern uint8_t _kernel_arena_end[];

@@ -2,7 +2,7 @@
 #define _KERN_VMM_H
 
 #include "kern_types.h"
-#include "palloc.h"
+#include "arena.h"
 
 #define MEMTYPE_UNKNOWN 0
 #define MEMTYPE_AVAILABLE 1
@@ -30,7 +30,7 @@
 
 #define ALLOC_PDPT(_entry, _ret, _flags)\
 	do {\
-		uint64_t *_tmp = (uint64_t *)kern_palloc(1);\
+		uint64_t *_tmp = (uint64_t *)kern_get_arena_pages(1);\
 		if (_tmp == NULL){ \
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
 			break;\
