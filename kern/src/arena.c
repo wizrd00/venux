@@ -1,4 +1,4 @@
-#include "palloc.h"
+#include "arena.h"
 
 uint8_t *arena = _kernel_arena_start;
 static size_t size, offset;
@@ -22,7 +22,7 @@ kern_init_arena(void)
 }
 
 void *
-kern_palloc(size_t count)
+kern_get_page(size_t count)
 {
 	if (offset + (PAGE_SIZE * count) > size)
 		return NULL;

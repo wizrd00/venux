@@ -2,14 +2,14 @@
 #define _KERN_VENUX_H
 
 #include "kern_types.h"
-#include "palloc.h"
+#include "arena.h"
 #include "vmm.h"
 
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\
-		_pml4 = (uint64_t *)kern_palloc(1);\
+		_pml4 = (uint64_t *)kern_get_page(1);\
 		if (_pml4 == NULL)\
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
 	} while (0)
