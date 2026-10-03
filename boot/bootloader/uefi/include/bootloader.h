@@ -51,12 +51,7 @@
 #define KARGS_ERROR_GET_MMAP1 4
 #define KARGS_ERROR_ALLOCATE_POOL 5
 
-#define PAGE_ALIGNED(addr) ((addr & 0xfffULL) == 0)
-
 #define CLEAR_SCREEN() SysTab->ConOut->ClearScreen(SysTab->ConOut)
-
-#define PRINT_START() efi_printf("VENUX Bootloader\r\n")
-#define PRINT_END() efi_printf("Start VENUX\r\n");
 
 #define MODIFY_SYSTAB()\
 	do {\

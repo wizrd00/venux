@@ -4,7 +4,7 @@ uint8_t *arena = _kernel_arena_start;
 static size_t size, offset;
 
 static int
-kern_arena_validate(void)
+kern_validate_arena(void)
 {
 	int ret = 0;
 	if ((size < PAGE_SIZE) || ((size & 0xfff) != 0))
@@ -13,12 +13,12 @@ kern_arena_validate(void)
 }
 
 int
-kern_arena_init(void)
+kern_init_arena(void)
 {
 	int ret = 0;
 	size = (size_t)(_kernel_arena_end - _kernel_arena_start);
 	offset = 0;
-	return kern_arena_validate();
+	return kern_validate_arena();
 }
 
 void *

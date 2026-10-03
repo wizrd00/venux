@@ -463,7 +463,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	EFI_LOADED_IMAGE *LoadedImage = NULL;
 	EFI_GUID LoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	CLEAR_SCREEN();
-	PRINT_START();
 	status = SysTab->BootServices->HandleProtocol(ImgHdl, &LoadedImageGuid,
 	    (VOID **) &LoadedImage);
 	if (EFI_ERROR(status))
@@ -498,14 +497,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		FATAL_ERROR("efi_kargs_add_mmap() returned %d"
 		    " with EFI_STATUS %d", ret, status);
-	PRINT_END();
-	int trycount = 3;
-	while (trycount-- > 0) {
-		status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
-		if (!EFI_ERROR(status))
-			break;
-	}
-	if (trycount == 0)
+	status = SysTab->BootServices->ExitBootServices(ImgHdl, MapKey);
+	if (EFI_ERROR(status))
 		FATAL_ERROR("ExitBootServices() failed with EFI_STATUS %d",
 		    status);
 	MODIFY_SYSTAB();

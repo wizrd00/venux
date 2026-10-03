@@ -1,5 +1,5 @@
-#ifndef _KERN_PMM_H
-#define _KERN_PMM_H
+#ifndef _KERN_VMM_H
+#define _KERN_VMM_H
 
 #include "kern_types.h"
 #include "palloc.h"
@@ -17,13 +17,12 @@
 #define PDE_FLAGS 0x003ULL
 #define PTE_FLAGS 0x003ULL
 
-#define CONVERT_KERNEL_VADDR(_addr) ((uint64_t)_addr - KERNEL_OFFSET)
-#define CONVERT_KERNEL_PADDR(_addr) ((uint64_t)_addr + KERNEL_OFFSET)
-#define CONVERT_PHYSMEM_VADDR(_addr) ((uint64_t)_addr - PHYSMEM_OFFSET)
-#define CONVERT_PHYSMEM_PADDR(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
+#define CONVERT_KERNEL_V2P(_addr) ((uint64_t)_addr - KERNEL_OFFSET)
+#define CONVERT_KERNEL_P2V(_addr) ((uint64_t)_addr + KERNEL_OFFSET)
+#define CONVERT_PHYSMEM_V2P(_addr) ((uint64_t)_addr - PHYSMEM_OFFSET)
+#define CONVERT_PHYSMEM_P2V(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
 
 #define VALID_PERMISSION(_perm) ((_perm & 0xf8) == 0)
-#define READABLE_PERMISSION(_perm) ((_perm & 0x4) != 0)
 #define WRITABLE_PERMISSION(_perm) ((_perm & 0x2) != 0)
 #define EXECUTABLE_PERMISSION(_perm) ((_perm & 0x1) != 0)
 
@@ -36,7 +35,7 @@
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
 			break;\
 		}\
-		_entry = (CONVERT_KERNEL_VADDR(_tmp) & 0xffffffffffffULL) |\
+		_entry = (CONVERT_KERNEL_V2P(_tmp) & 0xffffffffffffULL) |\
 		    _flags;\
 	} while (0)
 
@@ -53,16 +52,18 @@
 #define GET_PDI(_addr) ((_addr >> 21) & 0x1ffULL)
 #define GET_PTI(_addr) ((_addr >> 12) & 0x1ffULL)
 
-void pmm_set_pml4(uint64_t *);
+void vmm_set_pml4(uint64_t *);
 
-void pmm_get_pml4(uint64_t **);
+void vmm_get_pml4(uint64_t **);
 
-void pmm_set_efer_nxe(void);
+void vmm_set_efer_nxe(void);
 
-int pmm_map_region(uint64_t, uint64_t, uint64_t, uint64_t *,
+void vmm_reload_tlb(void);
+
+int vmm_map_region(uint64_t, uint64_t, uint64_t, uint64_t *,
     uint64_t * (*)(uint64_t));
 
-int pmm_set_permission(uint64_t, uint64_t, uint8_t, uint64_t *,
+int vmm_set_permission(uint64_t, uint64_t, uint8_t, uint64_t *,
     uint64_t * (*)(uint64_t));
 
 #endif

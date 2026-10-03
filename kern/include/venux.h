@@ -3,7 +3,9 @@
 
 #include "kern_types.h"
 #include "palloc.h"
-#include "pmm.h"
+#include "vmm.h"
+
+#define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
 #define ALLOC_PML4(_pml4, _ret)\
 	do {\

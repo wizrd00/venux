@@ -1,3 +1,1 @@
-1.since there is no bit in PTE to disabling READ permission, the
-  `pmm_set_entry_permission()` will set U/S=0 if bit 2 of the `perm` is not set
-  treating permission format as UWX not RWX
+1.since there is no bit in PTE to disabling READ permission.

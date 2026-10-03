@@ -3,7 +3,7 @@
 
 #include "kern_types.h"
 
-int kern_arena_init(void);
+int kern_init_arena(void);
 
 void *kern_palloc(size_t);
 
