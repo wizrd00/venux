@@ -15,7 +15,6 @@ kern_validate_arena(void)
 int
 kern_init_arena(void)
 {
-	int ret = 0;
 	size = (size_t)(_kernel_arena_end - _kernel_arena_start);
 	offset = 0;
 	return kern_validate_arena();
