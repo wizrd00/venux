@@ -252,7 +252,7 @@ kern_main(struct kern_args *kargs)
 {
 	int ret = 0;
 	kern_vaddr = (uint64_t)_kernel_start;
-	kern_paddr = (uint64_t)kargs->kern_start;
+	kern_paddr = (uint64_t)kargs->kern_paddr;
 	kern_size = (uint64_t)_kernel_end - kern_vaddr;
 	ret = kern_init_arena();
 	if (RET_ERROR(ret))

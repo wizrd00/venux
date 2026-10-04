@@ -479,7 +479,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	if (ret != 0)
 		LOAD_ERROR("efi_load_kernel() returned %d with EFI_STATUS %d",
 		    ret, status);
-	kargs.kern_start = (void *)real_kernel_start;
+	kargs.kern_paddr = (void *)real_kernel_start;
 	if (virt_kernel_start <= efi_app_end)
 		FATAL_ERROR("kernel start virtual address starts before"
 		    " EFI application virtual address ends");
