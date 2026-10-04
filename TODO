@@ -1,1 +1,0 @@
-1.checking is there any EFER register or not (with cpuid) and then call
