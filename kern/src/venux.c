@@ -139,13 +139,13 @@ kern_map_physmem(struct mem_info *mem)
 	int ret = 0;
 	ret = kern_iterate_memmap(mem, kern_map_avail_desc);
 	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+		return ret;
 	ret = kern_iterate_memmap(mem, kern_map_bootldr_desc);
 	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+		return ret;
 	ret = kern_iterate_memmap(mem, kern_map_acpi_desc);
 	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+		return ret;
 	return ret;
 }
 
