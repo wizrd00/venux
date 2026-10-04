@@ -47,9 +47,6 @@ kern_verify_memtypes(struct mem_info *mem)
 		case MEMTYPE_ACPI_RECLAIM :
 			flags |= 0x4;
 			break;
-		case MEMTYPE_ACPI_NVS :
-			flags |= 0x8;
-			break;
 		default :
 			break;
 		}
@@ -61,8 +58,6 @@ kern_verify_memtypes(struct mem_info *mem)
 		return ret = KERN_ERROR_MISSING_BOOTLOADER_MEMTYPE;
 	if ((flags & 0x4) == 0)
 		return ret = KERN_ERROR_MISSING_ACPI_RECLAIM_MEMTYPE;
-	if ((flags & 0x8) == 0)
-		return ret = KERN_ERROR_MISSING_ACPI_NVS_MEMTYPE;
 	return ret;
 }
 
@@ -93,36 +88,36 @@ kern_map_kernel(void *pdpt)
 static int
 kern_map_desc(struct mem_desc *desc)
 {
-	desc->virt_start = CONVERT_PHYSMEM_P2V(desc->phys_start);
+	uint64_t vaddr_s = CONVERT_PHYSMEM_P2V(desc->phys_start);
+	uint64_t vaddr_e = vaddr_s + desc->page_count * PAGE_SIZE;
 	if (phys_pml4 == NULL) {
 		return KERN_ERROR_INVALID_PML4;
 	}
-	return vmm_map_region(desc->phys_start, desc->virt_start,
-	    desc->virt_start + desc->page_count * PAGE_SIZE, phys_pml4,
+	return vmm_map_region(desc->phys_start, vaddr_s, vaddr_e , phys_pml4,
 	    extract_kernel_vaddr);
 }
 
 static int
 kern_map_avail_desc(struct mem_desc *desc)
 {
-	return (desc->type != MEMTYPE_AVAILABLE) ? 0 : kern_map_desc(desc);
+	return (desc->type == MEMTYPE_AVAILABLE) ? kern_map_desc(desc) : 0;
 }
 
 static int
 kern_map_bootldr_desc(struct mem_desc *desc)
 {
-	return (desc->type != MEMTYPE_BOOTLOADER) ? 0 : kern_map_desc(desc);
+	return (desc->type == MEMTYPE_BOOTLOADER) ? kern_map_desc(desc) : 0;
 }
 
 static int
 kern_map_acpi_desc(struct mem_desc *desc)
 {
-	return ((desc->type != MEMTYPE_ACPI_RECLAIM) &&
-	    (desc->type != MEMTYPE_ACPI_NVS)) ? 0 : kern_map_desc(desc);
+	return ((desc->type == MEMTYPE_ACPI_RECLAIM) ||
+	    (desc->type == MEMTYPE_ACPI_NVS)) ? kern_map_desc(desc) : 0;
 }
 
 static int
-kern_map_physmem(struct mem_info *mem, int (*desc_mapper)(struct mem_desc *))
+kern_iterate_memmap(struct mem_info *mem, int (*action)(struct mem_desc *))
 {
 	int ret = 0;
 	if ((mem->size <= 0) || (mem->count <= 0))
@@ -130,11 +125,27 @@ kern_map_physmem(struct mem_info *mem, int (*desc_mapper)(struct mem_desc *))
 	uint8_t *ptr = (uint8_t *)mem->info;
 	while (ptr < (uint8_t *)mem->info + (mem->count * mem->size)) {
 		struct mem_desc *desc = (struct mem_desc *)ptr;
-		ret = desc_mapper(desc);
+		ret = action(desc);
 		if (RET_ERROR(ret))
 			return ret;
 		ptr += mem->size;
 	}
+	return ret;
+}
+
+static int
+kern_map_physmem(struct mem_info *mem)
+{
+	int ret = 0;
+	ret = kern_iterate_memmap(mem, kern_map_avail_desc);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = kern_iterate_memmap(mem, kern_map_bootldr_desc);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = kern_iterate_memmap(mem, kern_map_acpi_desc);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
 	return ret;
 }
 
@@ -189,6 +200,53 @@ kern_secure_sections(void)
 	return ret;
 }
 
+static int
+kern_disable_execperm(struct mem_desc *desc, uint8_t perm)
+{
+	uint64_t vaddr_s = CONVERT_PHYSMEM_P2V(desc->phys_start);
+	uint64_t vaddr_e = vaddr_s + desc->page_count * PAGE_SIZE;
+	return vmm_set_permission(vaddr_s, vaddr_e, perm, phys_pml4,
+	    extract_physmem_vaddr);
+}
+
+static int
+kern_disable_avail_execperm(struct mem_desc *desc)
+{
+	return (desc->type == MEMTYPE_AVAILABLE) ?
+	    kern_disable_execperm(desc, 0x2) : 0;
+}
+
+static int
+kern_disable_bootldr_execperm(struct mem_desc *desc)
+{
+	return (desc->type == MEMTYPE_BOOTLOADER) ?
+	    kern_disable_execperm(desc, 0x2) : 0;
+}
+
+static int
+kern_disable_acpi_execperm(struct mem_desc *desc)
+{
+	return ((desc->type == MEMTYPE_ACPI_RECLAIM) ||
+	    (desc->type == MEMTYPE_ACPI_NVS)) ?
+	    kern_disable_execperm(desc, 0x0) : 0;
+}
+
+static int
+kern_secure_physmem(struct mem_info *mem)
+{
+	int ret = 0;
+	ret = kern_iterate_memmap(mem, kern_disable_avail_execperm);
+	if (RET_ERROR(ret))
+		return ret;
+	ret = kern_iterate_memmap(mem, kern_disable_bootldr_execperm);
+	if (RET_ERROR(ret))
+		return ret;
+	ret = kern_iterate_memmap(mem, kern_disable_acpi_execperm);
+	if (RET_ERROR(ret))
+		return ret;
+	return ret;
+}
+
 void
 kern_main(struct kern_args *kargs)
 {
@@ -208,13 +266,7 @@ kern_main(struct kern_args *kargs)
 	ret = kern_map_kernel(kargs->kern_pdpt);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
-	ret = kern_map_physmem(&kargs->mem, kern_map_avail_desc);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_map_physmem(&kargs->mem, kern_map_bootldr_desc);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_map_physmem(&kargs->mem, kern_map_acpi_desc);
+	ret = kern_map_physmem(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	vmm_set_pml4((uint64_t *)CONVERT_KERNEL_V2P(phys_pml4));
@@ -223,6 +275,9 @@ kern_main(struct kern_args *kargs)
 	kargs->acpi = (void *)CONVERT_PHYSMEM_P2V(kargs->acpi);
 	kargs->mem.info = (void *)CONVERT_PHYSMEM_P2V(kargs->mem.info);
 	ret = kern_secure_sections();
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = kern_secure_physmem(&kargs->mem);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	return;
