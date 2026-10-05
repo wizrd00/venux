@@ -3,7 +3,22 @@
 
 #include "kern_types.h"
 #include "arena.h"
+#include "gdt.h"
 #include "vmm.h"
+
+#define KERNEL_CODE_ACCESS 0x9bU
+#define KERNEL_CODE_FLAGS 0x0aU
+#define KERNEL_CODE_LIMIT 0xfffffU
+#define KERNEL_DATA_ACCESS 0x93U
+#define KERNEL_DATA_FLAGS 0x08U
+#define KERNEL_DATA_LIMIT 0xfffffU
+
+#define USER_CODE_ACCESS 0xfbU
+#define USER_CODE_FLAGS 0x0aU
+#define USER_CODE_LIMIT 0xfffffU
+#define USER_DATA_ACCESS 0xf3U
+#define USER_DATA_FLAGS 0x08U
+#define USER_DATA_LIMIT 0xfffffU
 
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
@@ -12,6 +27,38 @@
 		_pml4 = (uint64_t *)kern_get_arena_pages(1);\
 		if (_pml4 == NULL)\
 			_ret = KERN_ERROR_OUT_OF_ARENA;\
+	} while (0)
+
+#define SET_GDT_CONF_KERNEL_CODE(_conf)\
+	do {\
+		conf.base = kern_text_vaddr;\
+		conf.limit = KERNEL_CODE_LIMIT;\
+		conf.access = (uint8_t)KERNEL_CODE_ACCESS;\
+		conf.flags = (uint8_t)KERNEL_CODE_FLAGS;\
+	} while (0)
+
+#define SET_GDT_CONF_KERNEL_DATA(_conf)\
+	do {\
+		conf.base = kern_rodata_vaddr;\
+		conf.limit = KERNEL_DATA_LIMIT;\
+		conf.access = (uint8_t)KERNEL_DATA_ACCESS;\
+		conf.flags = (uint8_t)KERNEL_DATA_FLAGS;\
+	} while (0)
+
+#define SET_GDT_CONF_USER_CODE(_conf)\
+	do {\
+		conf.base = 0;\
+		conf.limit = USER_CODE_LIMIT;\
+		conf.access = (uint8_t)USER_CODE_ACCESS;\
+		conf.flags = (uint8_t)USER_CODE_FLAGS;\
+	} while (0)
+
+#define SET_GDT_CONF_USER_DATA(_conf)\
+	do {\
+		conf.base = 0;\
+		conf.limit = USER_DATA_LIMIT;\
+		conf.access = (uint8_t)USER_DATA_ACCESS;\
+		conf.flags = (uint8_t)USER_DATA_FLAGS;\
 	} while (0)
 
 void kern_main(struct kern_args *);

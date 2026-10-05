@@ -7,7 +7,7 @@ static int
 kern_validate_arena(void)
 {
 	int ret = 0;
-	if ((size < PAGE_SIZE) || ((size & 0xfff) != 0))
+	if ((size < PAGE_SIZE) || (!PAGE_ALIGNED(size)))
 		return ret = KERN_ERROR_INVALID_ARENA_SIZE;
 	return ret;
 }

@@ -22,7 +22,7 @@
 #define CONVERT_PHYSMEM_V2P(_addr) ((uint64_t)_addr - PHYSMEM_OFFSET)
 #define CONVERT_PHYSMEM_P2V(_addr) ((uint64_t)_addr + PHYSMEM_OFFSET)
 
-#define VALID_PERMISSION(_perm) ((_perm & 0xfc) == 0)
+#define VALID_PERMISSION(_perm) (_perm <= 0x2)
 #define WRITABLE_PERMISSION(_perm) ((_perm & 0x2) != 0)
 #define EXECUTABLE_PERMISSION(_perm) ((_perm & 0x1) != 0)
 
