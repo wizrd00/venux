@@ -4,6 +4,7 @@
 #include "kern_types.h"
 #include "arena.h"
 #include "gdt.h"
+#include "tss.h"
 #include "vmm.h"
 
 #define KERNEL_CODE_ACCESS 0x9bU
@@ -64,9 +65,9 @@
 		_conf.flags = (uint8_t)USER_DATA_FLAGS;\
 	} while (0)
 
-#define SET_GDT_CONF_TSS(_conf)\
+#define SET_GDT_CONF_TSS(_tss, _conf)\
 	do {\
-		_conf.base = tss;\
+		_conf.base = (uint64_t)_tss;\
 		_conf.limit = TSS_SIZE - 1;\
 		_conf.access = (uint8_t)TSS_ACCESS;\
 		_conf.flags = (uint8_t)TSS_FLAGS;\

@@ -1,7 +1,5 @@
 #include "gdt.h"
 
-uint64_t gdt[GDT_ENTRY_COUNT];
-
 static int
 gdt_validate_entry_conf(struct gdt_entry_conf *conf)
 {
@@ -13,7 +11,7 @@ gdt_validate_entry_conf(struct gdt_entry_conf *conf)
 }
 
 static int
-gdt_modify_entry(struct gdt_entry_conf *conf, int index)
+gdt_modify_entry(uint64_t *gdt, struct gdt_entry_conf *conf, int index)
 {
 	uint8_t *ent = (uint8_t *)(gdt + index);
 	ent[0] = (uint8_t)(conf->limit & 0xffU);
@@ -28,7 +26,7 @@ gdt_modify_entry(struct gdt_entry_conf *conf, int index)
 }
 
 static int
-gdt_modify_system_entry(struct gdt_entry_conf *conf, int index)
+gdt_modify_system_entry(uint64_t *gdt, struct gdt_entry_conf *conf, int index)
 {
 	int ret = 0;
 	uint8_t *ent = (uint8_t *)(gdt + index);
@@ -49,51 +47,51 @@ gdt_modify_system_entry(struct gdt_entry_conf *conf, int index)
 }
 
 int
-gdt_modify_kernel_code(struct gdt_entry_conf *conf)
+gdt_modify_kernel_code(uint64_t *gdt, struct gdt_entry_conf *conf)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
 	if (RET_ERROR(ret))
 		return ret;
-	return gdt_modify_entry(conf, GDT_KERNEL_CODE_INDEX);
+	return gdt_modify_entry(gdt, conf, GDT_KERNEL_CODE_INDEX);
 }
 
 int
-gdt_modify_kernel_data(struct gdt_entry_conf *conf)
+gdt_modify_kernel_data(uint64_t *gdt, struct gdt_entry_conf *conf)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
 	if (RET_ERROR(ret))
 		return ret;
-	return gdt_modify_entry(conf, GDT_KERNEL_DATA_INDEX);
+	return gdt_modify_entry(gdt, conf, GDT_KERNEL_DATA_INDEX);
 }
 
 int
-gdt_modify_user_code(struct gdt_entry_conf *conf)
+gdt_modify_user_code(uint64_t *gdt, struct gdt_entry_conf *conf)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
 	if (RET_ERROR(ret))
 		return ret;
-	return gdt_modify_entry(conf, GDT_USER_CODE_INDEX);
+	return gdt_modify_entry(gdt, conf, GDT_USER_CODE_INDEX);
 }
 
 int
-gdt_modify_user_data(struct gdt_entry_conf *conf)
+gdt_modify_user_data(uint64_t *gdt, struct gdt_entry_conf *conf)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
 	if (RET_ERROR(ret))
 		return ret;
-	return gdt_modify_entry(conf, GDT_USER_DATA_INDEX);
+	return gdt_modify_entry(gdt, conf, GDT_USER_DATA_INDEX);
 }
 
 int
-gdt_modify_tss(struct gdt_entry_conf *conf)
+gdt_modify_tss(uint64_t *gdt, struct gdt_entry_conf *conf)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
 	if (RET_ERROR(ret))
 		return ret;
-	return gdt_modify_system_entry(conf, GDT_TSS_INDEX);
+	return gdt_modify_system_entry(gdt, conf, GDT_TSS_INDEX);
 }

@@ -18,6 +18,30 @@
 #define TSS_IST7_INDEX 21
 #define TSS_IOPB_INDEX 25
 
+void tss_set_table(void *);
+
+int tss_modify_rsp0(uint32_t *, uint64_t);
+
+int tss_modify_rsp1(uint32_t *, uint64_t);
+
+int tss_modify_rsp2(uint32_t *, uint64_t);
+
+int tss_modify_ist1(uint32_t *, uint64_t);
+
+int tss_modify_ist2(uint32_t *, uint64_t);
+
+int tss_modify_ist3(uint32_t *, uint64_t);
+
+int tss_modify_ist4(uint32_t *, uint64_t);
+
+int tss_modify_ist5(uint32_t *, uint64_t);
+
+int tss_modify_ist6(uint32_t *, uint64_t);
+
+int tss_modify_ist7(uint32_t *, uint64_t);
+
+int tss_modify_iopb(uint32_t *, uint16_t);
+
 extern uint32_t tss[];
 
 #endif

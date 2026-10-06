@@ -20,17 +20,17 @@ struct gdt_entry_conf {
 	uint8_t flags;
 };
 
-void gdt_set_table(uint64_t base, uint16_t limit);
+void gdt_set_table(uint64_t, uint16_t);
 
-int gdt_modify_kernel_code(struct gdt_entry_conf *);
+int gdt_modify_kernel_code(uint64_t *, struct gdt_entry_conf *);
 
-int gdt_modify_kernel_data(struct gdt_entry_conf *);
+int gdt_modify_kernel_data(uint64_t *, struct gdt_entry_conf *);
 
-int gdt_modify_user_code(struct gdt_entry_conf *);
+int gdt_modify_user_code(uint64_t *, struct gdt_entry_conf *);
 
-int gdt_modify_user_data(struct gdt_entry_conf *);
+int gdt_modify_user_data(uint64_t *, struct gdt_entry_conf *);
 
-int gdt_modify_tss(struct gdt_entry_conf *);
+int gdt_modify_tss(uint64_t *, struct gdt_entry_conf *);
 
 extern uint64_t gdt[];
 
