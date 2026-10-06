@@ -4,6 +4,7 @@
 #include "kern_types.h"
 
 #define GDT_ENTRY_COUNT 7
+#define GDT_SIZE (GDT_ENTRY_COUNT * 8)
 
 #define GDT_NULL_INDEX 0
 #define GDT_KERNEL_CODE_INDEX 1

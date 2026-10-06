@@ -4,6 +4,7 @@
 #include "kern_types.h"
 
 #define TSS_ENTRY_COUNT 26
+#define TSS_SIZE (TSS_ENTRY_COUNT * 4)
 
 #define TSS_RSP0_INDEX 1
 #define TSS_RSP1_INDEX 3

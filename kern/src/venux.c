@@ -92,7 +92,26 @@ kern_init_gdt(void)
 	ret = gdt_modify_user_data(&conf);
 	if (RET_ERROR(ret))
 		return ret;
-	/* TODO : tss */
+	SET_GDT_CONF_TSS(conf);
+	ret = gdt_modify_tss(&conf);
+	return ret;
+}
+
+static int
+kern_init_idt(void)
+{
+	int ret = 0;
+	/* TODO : idt */
+	return ret;
+}
+
+static int
+kern_set_tables(void)
+{
+	int ret = 0;
+	ret = gdt_set_table(gdt, (uint16_t)(GDT_SIZE - 1));
+	if (RET_ERROR(ret))
+		return ret;
 	return ret;
 }
 
@@ -310,6 +329,12 @@ kern_main(struct kern_args *kargs)
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	ret = kern_init_tss();
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = kern_init_idt();
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = kern_set_tables();
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	ret = kern_init_arena();

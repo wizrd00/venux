@@ -20,6 +20,9 @@
 #define USER_DATA_FLAGS 0x08U
 #define USER_DATA_LIMIT 0xfffffU
 
+#define TSS_ACCESS 0x89U
+#define TSS_FLAGS 0x0U
+
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
 #define ALLOC_PML4(_pml4, _ret)\
@@ -31,34 +34,42 @@
 
 #define SET_GDT_CONF_KERNEL_CODE(_conf)\
 	do {\
-		conf.base = kern_text_vaddr;\
-		conf.limit = KERNEL_CODE_LIMIT;\
-		conf.access = (uint8_t)KERNEL_CODE_ACCESS;\
-		conf.flags = (uint8_t)KERNEL_CODE_FLAGS;\
+		_conf.base = kern_text_vaddr;\
+		_conf.limit = KERNEL_CODE_LIMIT;\
+		_conf.access = (uint8_t)KERNEL_CODE_ACCESS;\
+		_conf.flags = (uint8_t)KERNEL_CODE_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_KERNEL_DATA(_conf)\
 	do {\
-		conf.base = kern_rodata_vaddr;\
-		conf.limit = KERNEL_DATA_LIMIT;\
-		conf.access = (uint8_t)KERNEL_DATA_ACCESS;\
-		conf.flags = (uint8_t)KERNEL_DATA_FLAGS;\
+		_conf.base = kern_rodata_vaddr;\
+		_conf.limit = KERNEL_DATA_LIMIT;\
+		_conf.access = (uint8_t)KERNEL_DATA_ACCESS;\
+		_conf.flags = (uint8_t)KERNEL_DATA_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_USER_CODE(_conf)\
 	do {\
-		conf.base = 0;\
-		conf.limit = USER_CODE_LIMIT;\
-		conf.access = (uint8_t)USER_CODE_ACCESS;\
-		conf.flags = (uint8_t)USER_CODE_FLAGS;\
+		_conf.base = 0;\
+		_conf.limit = USER_CODE_LIMIT;\
+		_conf.access = (uint8_t)USER_CODE_ACCESS;\
+		_conf.flags = (uint8_t)USER_CODE_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_USER_DATA(_conf)\
 	do {\
-		conf.base = 0;\
-		conf.limit = USER_DATA_LIMIT;\
-		conf.access = (uint8_t)USER_DATA_ACCESS;\
-		conf.flags = (uint8_t)USER_DATA_FLAGS;\
+		_conf.base = 0;\
+		_conf.limit = USER_DATA_LIMIT;\
+		_conf.access = (uint8_t)USER_DATA_ACCESS;\
+		_conf.flags = (uint8_t)USER_DATA_FLAGS;\
+	} while (0)
+
+#define SET_GDT_CONF_TSS(_conf)\
+	do {\
+		_conf.base = tss;\
+		_conf.limit = TSS_SIZE - 1;\
+		_conf.access = (uint8_t)TSS_ACCESS;\
+		_conf.flags = (uint8_t)TSS_FLAGS;\
 	} while (0)
 
 void kern_main(struct kern_args *);
