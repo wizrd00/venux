@@ -31,7 +31,7 @@ extract_physmem_vaddr(uint64_t entry)
 	return (uint64_t *)CONVERT_PHYSMEM_P2V(EXTRACT_ADDR(entry));
 }
 
-static int
+static void
 kern_init_addrs(struct kern_args *kargs)
 {
 	kern_vaddr = (uint64_t)_kernel_start;
@@ -40,32 +40,32 @@ kern_init_addrs(struct kern_args *kargs)
 	kern_text_vaddr = (uint64_t)_kernel_text_start;
 	kern_text_size = (uint64_t)(_kernel_text_end - _kernel_text_start);
 	if (!PAGE_ALIGNED(kern_text_size))
-		return KERN_ERROR_INVALID_TEXT_SIZE;
+		KERN_PANIC(KERN_ERROR_INVALID_TEXT_SIZE);
 	kern_rodata_vaddr = (uint64_t)_kernel_rodata_start;
 	kern_rodata_size = (uint64_t)(_kernel_rodata_end -
 	    _kernel_rodata_start);
 	if (!PAGE_ALIGNED(kern_rodata_size))
-		return KERN_ERROR_INVALID_RODATA_SIZE;
+		KERN_PANIC(KERN_ERROR_INVALID_RODATA_SIZE);
 	kern_data_vaddr = (uint64_t)_kernel_data_start;
 	kern_data_size = (uint64_t)(_kernel_data_end - _kernel_data_start);
 	if (!PAGE_ALIGNED(kern_data_size))
-		return KERN_ERROR_INVALID_DATA_SIZE;
+		KERN_PANIC(KERN_ERROR_INVALID_DATA_SIZE);
 	kern_bss_vaddr = (uint64_t)_kernel_bss_start;
 	kern_bss_size = (uint64_t)(_kernel_bss_end - _kernel_bss_start);
 	if (!PAGE_ALIGNED(kern_bss_size))
-		return KERN_ERROR_INVALID_BSS_SIZE;
+		KERN_PANIC(KERN_ERROR_INVALID_BSS_SIZE);
 	kern_arena_vaddr = (uint64_t)_kernel_arena_start;
 	kern_arena_size = (uint64_t)(_kernel_arena_end - _kernel_arena_start);
 	if (!PAGE_ALIGNED(kern_arena_size))
-		return KERN_ERROR_INVALID_ARENA_SIZE;
+		KERN_PANIC(KERN_ERROR_INVALID_ARENA_SIZE);
 	kern_stack_vaddr = (uint64_t)_kernel_stack_start;
 	kern_stack_size = (uint64_t)(_kernel_stack_end - _kernel_stack_start);
 	if (!PAGE_ALIGNED(kern_stack_size))
-		return KERN_ERROR_INVALID_STACK_SIZE;
-	return 0;
+		KERN_PANIC(KERN_ERROR_INVALID_STACK_SIZE);
+	return;
 }
 
-static int
+static void
 kern_init_gdt(void)
 {
 	int ret = 0;
@@ -73,51 +73,53 @@ kern_init_gdt(void)
 	SET_GDT_CONF_KERNEL_CODE(conf);
 	ret = gdt_modify_kernel_code(gdt, &conf);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	SET_GDT_CONF_KERNEL_DATA(conf);
 	ret = gdt_modify_kernel_data(gdt, &conf);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	SET_GDT_CONF_USER_CODE(conf);
 	ret = gdt_modify_user_code(gdt, &conf);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	SET_GDT_CONF_USER_DATA(conf);
 	ret = gdt_modify_user_data(gdt, &conf);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	SET_GDT_CONF_TSS(tss, conf);
 	ret = gdt_modify_tss(gdt, &conf);
-	return ret;
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	return;
 }
 
-static int
+static void
 kern_init_tss(void)
 {
 	int ret = 0;
 	/* TODO : tss */
-	return ret;
+	return;
 }
 
-static int
+static void
 kern_init_idt(void)
 {
 	int ret = 0;
 	/* TODO : idt */
-	return ret;
+	return;
 }
 
-static int
+static void
 kern_set_tables(void)
 {
 	int ret = 0;
 	gdt_set_table((uint64_t)gdt, (uint16_t)(GDT_SIZE - 1));
 	if (RET_ERROR(ret))
-		return ret;
-	return ret;
+		KERN_PANIC(ret);
+	return;
 }
 
-static int
+static void
 kern_verify_memtypes(struct mem_info *mem)
 {
 	int ret = 0;
@@ -141,36 +143,36 @@ kern_verify_memtypes(struct mem_info *mem)
 		ptr += mem->size;
 	}
 	if ((flags & 0x1) == 0)
-		return ret = KERN_ERROR_MISSING_AVAILABLE_MEMTYPE;
+		KERN_PANIC(KERN_ERROR_MISSING_AVAILABLE_MEMTYPE);
 	if ((flags & 0x2) == 0)
-		return ret = KERN_ERROR_MISSING_BOOTLOADER_MEMTYPE;
+		KERN_PANIC(KERN_ERROR_MISSING_BOOTLOADER_MEMTYPE);
 	if ((flags & 0x4) == 0)
-		return ret = KERN_ERROR_MISSING_ACPI_RECLAIM_MEMTYPE;
-	return ret;
+		KERN_PANIC(KERN_ERROR_MISSING_ACPI_RECLAIM_MEMTYPE);
+	return;
 }
 
-static int
+static void
 kern_init_pml4(void)
 {
 	int ret = 0;
 	if (phys_pml4 == NULL) {
 		ALLOC_PML4(phys_pml4, ret);
 		if (RET_ERROR(ret))
-			return ret;
+			KERN_PANIC(ret);
 	}
-	return ret;
+	return;
 }
 
-static int
+static void
 kern_map_kernel(void *pdpt)
 {
 	if (phys_pml4 == NULL)
-		return KERN_ERROR_INVALID_PML4;
+		KERN_PANIC(KERN_ERROR_INVALID_PML4);
 	int pml4i = (int)((kern_vaddr >> 39) & 0x1ffULL);
 	if (ENTRY_PRESENT(phys_pml4[pml4i]))
-		return KERN_ERROR_PAGE_ALREADY_PRESENT;
+		KERN_PANIC(KERN_ERROR_PAGE_ALREADY_PRESENT);
 	phys_pml4[pml4i] = ((uint64_t)pdpt & 0xffffffffffffULL) | PML4E_FLAGS;
-	return 0;
+	return;
 }
 
 static int
@@ -221,23 +223,23 @@ kern_iterate_memmap(struct mem_info *mem, int (*action)(struct mem_desc *))
 	return ret;
 }
 
-static int
+static void
 kern_map_physmem(struct mem_info *mem)
 {
 	int ret = 0;
 	ret = kern_iterate_memmap(mem, kern_map_avail_desc);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = kern_iterate_memmap(mem, kern_map_bootldr_desc);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = kern_iterate_memmap(mem, kern_map_acpi_desc);
 	if (RET_ERROR(ret))
-		return ret;
-	return ret;
+		KERN_PANIC(ret);
+	return;
 }
 
-static int
+static void
 kern_secure_sections(void)
 {
 	int ret = 0;
@@ -246,33 +248,33 @@ kern_secure_sections(void)
 	    kern_text_vaddr + kern_text_size, 0x1, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_rodata_vaddr,
 	    kern_rodata_vaddr + kern_rodata_size, 0x0, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_data_vaddr,
 	    kern_data_vaddr + kern_data_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_bss_vaddr,
 	    kern_bss_vaddr + kern_bss_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_arena_vaddr,
 	    kern_arena_vaddr + kern_arena_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_stack_vaddr,
 	    kern_stack_vaddr + kern_stack_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
-		return ret;
-	return ret;
+		KERN_PANIC(ret);
+	return;
 }
 
 static int
@@ -306,64 +308,41 @@ kern_disable_acpi_execperm(struct mem_desc *desc)
 	    kern_disable_execperm(desc, 0x0) : 0;
 }
 
-static int
+static void
 kern_secure_physmem(struct mem_info *mem)
 {
 	int ret = 0;
 	ret = kern_iterate_memmap(mem, kern_disable_avail_execperm);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = kern_iterate_memmap(mem, kern_disable_bootldr_execperm);
 	if (RET_ERROR(ret))
-		return ret;
+		KERN_PANIC(ret);
 	ret = kern_iterate_memmap(mem, kern_disable_acpi_execperm);
 	if (RET_ERROR(ret))
-		return ret;
-	return ret;
+		KERN_PANIC(ret);
+	return;
 }
 
 void
 kern_main(struct kern_args *kargs)
 {
-	int ret = 0;
 	kern_init_addrs(kargs);
-	ret = kern_init_gdt();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_init_tss();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_init_idt();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_set_tables();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_init_arena();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_verify_memtypes(&kargs->mem);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_init_pml4();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_map_kernel(kargs->kern_pdpt);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_map_physmem(&kargs->mem);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+	kern_init_gdt();
+	kern_init_tss();
+	kern_init_idt();
+	kern_set_tables();
+	kern_init_arena();
+	kern_verify_memtypes(&kargs->mem);
+	kern_init_pml4();
+	kern_map_kernel(kargs->kern_pdpt);
+	kern_map_physmem(&kargs->mem);
 	vmm_set_pml4((uint64_t *)CONVERT_KERNEL_V2P(phys_pml4));
 	kargs = (struct kern_args *)CONVERT_PHYSMEM_P2V(kargs);
 	kargs->kern_pdpt = (void *)CONVERT_PHYSMEM_P2V(kargs->kern_pdpt);
 	kargs->acpi = (void *)CONVERT_PHYSMEM_P2V(kargs->acpi);
 	kargs->mem.info = (void *)CONVERT_PHYSMEM_P2V(kargs->mem.info);
-	ret = kern_secure_sections();
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
-	ret = kern_secure_physmem(&kargs->mem);
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+	kern_secure_sections();
+	kern_secure_physmem(&kargs->mem);
 	return;
 }
