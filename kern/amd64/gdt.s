@@ -14,7 +14,7 @@ gdt_set_table:
 	lgdt [gdtr]
 	ret
 
-reload_gdt:
+gdt_reload_table:
 	push 0x08
 	lea rax, [rel .reload_cs]
 	push rax
@@ -30,3 +30,4 @@ reload_gdt:
 	ret
 
 global gdt_set_table
+global gdt_reload_table

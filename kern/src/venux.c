@@ -6,18 +6,18 @@ uint64_t kern_size;
 uint64_t *phys_pml4;
 uint64_t gdt[GDT_ENTRY_COUNT];
 uint32_t tss[TSS_ENTRY_COUNT];
-static uint64_t kern_text_vaddr;
-static uint64_t kern_text_size;
-static uint64_t kern_rodata_vaddr;
-static uint64_t kern_rodata_size;
-static uint64_t kern_data_vaddr;
-static uint64_t kern_data_size;
-static uint64_t kern_bss_vaddr;
-static uint64_t kern_bss_size;
-static uint64_t kern_arena_vaddr;
-static uint64_t kern_arena_size;
-static uint64_t kern_stack_vaddr;
-static uint64_t kern_stack_size;
+uint64_t kern_text_vaddr;
+uint64_t kern_text_size;
+uint64_t kern_rodata_vaddr;
+uint64_t kern_rodata_size;
+uint64_t kern_data_vaddr;
+uint64_t kern_data_size;
+uint64_t kern_bss_vaddr;
+uint64_t kern_bss_size;
+uint64_t kern_arena_vaddr;
+uint64_t kern_arena_size;
+uint64_t kern_stack_vaddr;
+uint64_t kern_stack_size;
 
 static uint64_t *
 extract_kernel_vaddr(uint64_t entry)
@@ -330,6 +330,9 @@ kern_main(struct kern_args *kargs)
 	kern_init_addrs(kargs);
 	kern_init_gdt();
 	kern_init_tss();
+	tss_set_table((uint64_t)tss);
+	gdt_set_table((uint64_t)gdt, (uint16_t)GDT_SIZE);
+	gdt_reload_table();
 	kern_init_idt();
 	kern_set_tables();
 	kern_init_arena();

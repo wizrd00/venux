@@ -22,6 +22,8 @@ struct gdt_entry_conf {
 
 void gdt_set_table(uint64_t, uint16_t);
 
+void gdt_reload_table(void);
+
 int gdt_modify_kernel_code(uint64_t *, struct gdt_entry_conf *);
 
 int gdt_modify_kernel_data(uint64_t *, struct gdt_entry_conf *);
