@@ -71,23 +71,23 @@ kern_init_gdt(void)
 	int ret = 0;
 	struct gdt_entry_conf conf;
 	SET_GDT_CONF_KERNEL_CODE(conf);
-	ret = gdt_modify_kernel_code(gdt, &conf);
+	ret = gdt_modify_entry(gdt, &conf, GDT_KERNEL_CODE_INDEX);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	SET_GDT_CONF_KERNEL_DATA(conf);
-	ret = gdt_modify_kernel_data(gdt, &conf);
+	ret = gdt_modify_entry(gdt, &conf, GDT_KERNEL_DATA_INDEX);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	SET_GDT_CONF_USER_CODE(conf);
-	ret = gdt_modify_user_code(gdt, &conf);
+	ret = gdt_modify_entry(gdt, &conf, GDT_USER_CODE_INDEX);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	SET_GDT_CONF_USER_DATA(conf);
-	ret = gdt_modify_user_data(gdt, &conf);
+	ret = gdt_modify_entry(gdt, &conf, GDT_USER_DATA_INDEX);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	SET_GDT_CONF_TSS(tss, conf);
-	ret = gdt_modify_tss(gdt, &conf);
+	ret = gdt_modify_system_entry(gdt, &conf, GDT_TSS_INDEX);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
 	return;

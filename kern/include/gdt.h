@@ -24,15 +24,9 @@ void gdt_set_table(uint64_t, uint16_t);
 
 void gdt_reload_table(void);
 
-int gdt_modify_kernel_code(uint64_t *, struct gdt_entry_conf *);
+int gdt_modify_entry(uint64_t *, struct gdt_entry_conf *, int);
 
-int gdt_modify_kernel_data(uint64_t *, struct gdt_entry_conf *);
-
-int gdt_modify_user_code(uint64_t *, struct gdt_entry_conf *);
-
-int gdt_modify_user_data(uint64_t *, struct gdt_entry_conf *);
-
-int gdt_modify_tss(uint64_t *, struct gdt_entry_conf *);
+int gdt_modify_system_entry(uint64_t *, struct gdt_entry_conf *, int);
 
 extern uint64_t gdt[];
 

@@ -20,27 +20,9 @@
 
 void tss_set_table(uint64_t);
 
-void tss_modify_rsp0(uint32_t *, uint64_t);
+void tss_modify_ptr_entry(uint32_t *, uint64_t, int);
 
-void tss_modify_rsp1(uint32_t *, uint64_t);
-
-void tss_modify_rsp2(uint32_t *, uint64_t);
-
-void tss_modify_ist1(uint32_t *, uint64_t);
-
-void tss_modify_ist2(uint32_t *, uint64_t);
-
-void tss_modify_ist3(uint32_t *, uint64_t);
-
-void tss_modify_ist4(uint32_t *, uint64_t);
-
-void tss_modify_ist5(uint32_t *, uint64_t);
-
-void tss_modify_ist6(uint32_t *, uint64_t);
-
-void tss_modify_ist7(uint32_t *, uint64_t);
-
-void tss_modify_iopb(uint32_t *, uint16_t);
+void tss_modify_iopb_entry(uint32_t *, uint16_t);
 
 extern uint32_t tss[];
 
