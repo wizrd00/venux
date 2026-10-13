@@ -1,1 +1,2 @@
-1.implement kern_init_tss()
+1.implement kern_init_idt() first before tss
+2.implement kern_init_tss()
