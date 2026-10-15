@@ -38,7 +38,7 @@ struct idt_gate {
 
 void idt_set_table(uint64_t, uint16_t);
 
-void idt_set_gate(struct idt_gate *, uint64_t, uint16_t, uint16_t)
+void idt_set_gate(struct idt_gate *, uint64_t, uint16_t, uint16_t);
 
 int idt_modify_gate(uint64_t *, struct idt_gate *, int);
 

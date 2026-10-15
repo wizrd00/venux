@@ -208,16 +208,16 @@ efi_load_kernel(void)
 			goto out_free;
 		}
 	}
-	out_normal :
-		goto out_close_file;
-	out_free :
-		SysTab->BootServices->FreePages(Memory, Pages);
-	out_close_file :
-		KernelFile->Close(KernelFile);
-	out_close_volume :
-		Volume->Close(Volume);
-	out :
-		return ret;
+out_normal :
+	goto out_close_file;
+out_free :
+	SysTab->BootServices->FreePages(Memory, Pages);
+out_close_file :
+	KernelFile->Close(KernelFile);
+out_close_volume :
+	Volume->Close(Volume);
+out :
+	return ret;
 }
 
 static int
