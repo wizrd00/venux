@@ -28,11 +28,11 @@
 #define IDT_CP 21
 
 struct idt_gate {
-	uint32_t offset0;
+	uint16_t offset0;
 	uint16_t selector;
 	uint16_t flags;
 	uint16_t offset1;
-	uint16_t offset2;
+	uint32_t offset2;
 	uint32_t resv;
 };
 
