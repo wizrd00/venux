@@ -1,7 +1,6 @@
 .PHONY: kernel clean-kernel
 
-KERN_CFLAGS := -Ikern/include \
-	-fPIE
+KERN_CFLAGS := -Ikern/include
 
 KERN_SRC_FILES := $(wildcard kern/src/*.c)
 KERN_ASM_FILES := $(wildcard kern/$(ARCH)/*.s)
