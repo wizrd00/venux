@@ -333,8 +333,7 @@ kern_main(struct kern_args *kargs)
 	kern_init_tss();
 	gdt_set_table((uint64_t)gdt, (uint16_t)GDT_SIZE);
 	gdt_reload_table();
-	tss_set_table((uint64_t)tss);
-	tss_reload_table();
+	tss_reload_table((uint16_t)(GDT_TSS_INDEX * 8));
 	kern_init_idt();
 	kern_set_tables();
 	kern_init_arena();
