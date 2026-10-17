@@ -112,10 +112,9 @@ kern_init_idt(void)
 static void
 kern_set_tables(void)
 {
-	int ret = 0;
 	gdt_set_table((uint64_t)gdt, (uint16_t)(GDT_SIZE - 1));
-	if (RET_ERROR(ret))
-		KERN_PANIC(ret);
+	gdt_reload_table();
+	tss_reload_table((uint16_t)(GDT_TSS_INDEX * 8));
 	return;
 }
 
@@ -331,9 +330,6 @@ kern_main(struct kern_args *kargs)
 	kern_init_addrs(kargs);
 	kern_init_gdt();
 	kern_init_tss();
-	gdt_set_table((uint64_t)gdt, (uint16_t)GDT_SIZE);
-	gdt_reload_table();
-	tss_reload_table((uint16_t)(GDT_TSS_INDEX * 8));
 	kern_init_idt();
 	kern_set_tables();
 	kern_init_arena();

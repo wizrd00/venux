@@ -28,6 +28,4 @@ int gdt_modify_entry(uint64_t *, const struct gdt_entry_conf *, int);
 
 int gdt_modify_system_entry(uint64_t *, const struct gdt_entry_conf *, int);
 
-extern uint64_t gdt[];
-
 #endif
