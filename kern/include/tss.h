@@ -26,6 +26,4 @@ void tss_modify_ptr_entry(uint32_t *, uint64_t, int);
 
 void tss_modify_iopb_entry(uint32_t *, uint16_t);
 
-extern uint32_t tss[];
-
 #endif

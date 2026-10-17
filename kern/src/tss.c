@@ -1,7 +1,5 @@
 #include "tss.h"
 
-uint32_t tss[TSS_ENTRY_COUNT];
-
 void
 tss_modify_ptr_entry(uint32_t *tss, uint64_t addr, int index)
 {

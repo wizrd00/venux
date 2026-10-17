@@ -32,7 +32,7 @@ extract_physmem_vaddr(uint64_t entry)
 }
 
 static void
-kern_init_addrs(struct kern_args *kargs)
+kern_init_addrs(const struct kern_args *kargs)
 {
 	kern_vaddr = (uint64_t)_kernel_start;
 	kern_paddr = (uint64_t)kargs->kern_paddr;
@@ -120,7 +120,7 @@ kern_set_tables(void)
 }
 
 static void
-kern_verify_memtypes(struct mem_info *mem)
+kern_verify_memtypes(const struct mem_info *mem)
 {
 	int ret = 0;
 	int flags = 0;
@@ -176,7 +176,7 @@ kern_map_kernel(void *pdpt)
 }
 
 static int
-kern_map_desc(struct mem_desc *desc)
+kern_map_desc(const struct mem_desc *desc)
 {
 	uint64_t vaddr_s = CONVERT_PHYSMEM_P2V(desc->phys_start);
 	uint64_t vaddr_e = vaddr_s + desc->page_count * PAGE_SIZE;
@@ -188,26 +188,27 @@ kern_map_desc(struct mem_desc *desc)
 }
 
 static int
-kern_map_avail_desc(struct mem_desc *desc)
+kern_map_avail_desc(const struct mem_desc *desc)
 {
 	return (desc->type == MEMTYPE_AVAILABLE) ? kern_map_desc(desc) : 0;
 }
 
 static int
-kern_map_bootldr_desc(struct mem_desc *desc)
+kern_map_bootldr_desc(const struct mem_desc *desc)
 {
 	return (desc->type == MEMTYPE_BOOTLOADER) ? kern_map_desc(desc) : 0;
 }
 
 static int
-kern_map_acpi_desc(struct mem_desc *desc)
+kern_map_acpi_desc(const struct mem_desc *desc)
 {
 	return ((desc->type == MEMTYPE_ACPI_RECLAIM) ||
 	    (desc->type == MEMTYPE_ACPI_NVS)) ? kern_map_desc(desc) : 0;
 }
 
 static int
-kern_iterate_memmap(struct mem_info *mem, int (*action)(struct mem_desc *))
+kern_iterate_memmap(const struct mem_info *mem,
+    int (*action)(const struct mem_desc *))
 {
 	int ret = 0;
 	if ((mem->size <= 0) || (mem->count <= 0))
@@ -224,7 +225,7 @@ kern_iterate_memmap(struct mem_info *mem, int (*action)(struct mem_desc *))
 }
 
 static void
-kern_map_physmem(struct mem_info *mem)
+kern_map_physmem(const struct mem_info *mem)
 {
 	int ret = 0;
 	ret = kern_iterate_memmap(mem, kern_map_avail_desc);
@@ -278,7 +279,7 @@ kern_secure_sections(void)
 }
 
 static int
-kern_disable_execperm(struct mem_desc *desc, uint8_t perm)
+kern_disable_execperm(const struct mem_desc *desc, uint8_t perm)
 {
 	uint64_t vaddr_s = CONVERT_PHYSMEM_P2V(desc->phys_start);
 	uint64_t vaddr_e = vaddr_s + desc->page_count * PAGE_SIZE;
@@ -287,21 +288,21 @@ kern_disable_execperm(struct mem_desc *desc, uint8_t perm)
 }
 
 static int
-kern_disable_avail_execperm(struct mem_desc *desc)
+kern_disable_avail_execperm(const struct mem_desc *desc)
 {
 	return (desc->type == MEMTYPE_AVAILABLE) ?
 	    kern_disable_execperm(desc, 0x2) : 0;
 }
 
 static int
-kern_disable_bootldr_execperm(struct mem_desc *desc)
+kern_disable_bootldr_execperm(const struct mem_desc *desc)
 {
 	return (desc->type == MEMTYPE_BOOTLOADER) ?
 	    kern_disable_execperm(desc, 0x2) : 0;
 }
 
 static int
-kern_disable_acpi_execperm(struct mem_desc *desc)
+kern_disable_acpi_execperm(const struct mem_desc *desc)
 {
 	return ((desc->type == MEMTYPE_ACPI_RECLAIM) ||
 	    (desc->type == MEMTYPE_ACPI_NVS)) ?
@@ -309,7 +310,7 @@ kern_disable_acpi_execperm(struct mem_desc *desc)
 }
 
 static void
-kern_secure_physmem(struct mem_info *mem)
+kern_secure_physmem(const struct mem_info *mem)
 {
 	int ret = 0;
 	ret = kern_iterate_memmap(mem, kern_disable_avail_execperm);

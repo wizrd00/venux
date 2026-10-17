@@ -1,7 +1,7 @@
 #include "gdt.h"
 
 static int
-gdt_validate_entry_conf(struct gdt_entry_conf *conf)
+gdt_validate_entry_conf(const struct gdt_entry_conf *conf)
 {
 	if (conf->limit > 0xfffffU)
 		return KERN_ERROR_INVALID_GDT_ENTRY_LIMIT;
@@ -11,7 +11,8 @@ gdt_validate_entry_conf(struct gdt_entry_conf *conf)
 }
 
 int
-gdt_modify_entry(uint64_t *gdt, struct gdt_entry_conf *conf, int index)
+gdt_modify_entry(uint64_t *gdt, const struct gdt_entry_conf *conf,
+    int index)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
@@ -30,7 +31,8 @@ gdt_modify_entry(uint64_t *gdt, struct gdt_entry_conf *conf, int index)
 }
 
 int
-gdt_modify_system_entry(uint64_t *gdt, struct gdt_entry_conf *conf, int index)
+gdt_modify_system_entry(uint64_t *gdt, const struct gdt_entry_conf *conf,
+    int index)
 {
 	int ret = 0;
 	ret = gdt_validate_entry_conf(conf);
