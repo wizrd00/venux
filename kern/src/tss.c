@@ -13,6 +13,6 @@ tss_modify_ptr_entry(uint32_t *tss, uint64_t addr, int index)
 void
 tss_modify_iopb_entry(uint32_t *tss, uint16_t iopb)
 {
-	tss[TSS_IOPB_INDEX] = (uint32_t)(iopb << 16);
+	tss[TSS_IOPB_INDEX] = ((uint32_t)iopb << 16);
 	return;
 }
