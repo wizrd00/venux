@@ -1,2 +1,2 @@
-1.implement kern_init_idt() first before tss
+1.implement intr_get_isr_info() then kern_init_idt()
 2.implement kern_init_tss()

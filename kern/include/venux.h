@@ -5,6 +5,7 @@
 #include "arena.h"
 #include "gdt.h"
 #include "tss.h"
+#include "idt.h"
 #include "vmm.h"
 
 #define KERNEL_CODE_ACCESS 0x9bU
@@ -92,9 +93,7 @@ extern uint8_t _kernel_stack_end[];
 
 extern uint64_t kern_paddr;
 extern uint64_t kern_vaddr;
-extern uint64_t *phys_pml4;
-extern uint64_t gdt[];
-extern uint32_t tss[];
+extern uint64_t kern_size;
 extern uint64_t kern_text_vaddr;
 extern uint64_t kern_text_size;
 extern uint64_t kern_rodata_vaddr;
@@ -107,5 +106,11 @@ extern uint64_t kern_arena_vaddr;
 extern uint64_t kern_arena_size;
 extern uint64_t kern_stack_vaddr;
 extern uint64_t kern_stack_size;
+
+extern uint64_t *phys_pml4;
+
+extern uint64_t gdt[];
+extern uint32_t tss[];
+extern struct idt_gate idt[];
 
 #endif

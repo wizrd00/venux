@@ -20,9 +20,7 @@ struct gdt_entry_conf {
 	uint8_t flags;
 };
 
-void gdt_set_table(uint64_t, uint16_t);
-
-void gdt_reload_table(void);
+void gdt_reload_table(uint64_t, uint16_t);
 
 int gdt_modify_entry(uint64_t *, const struct gdt_entry_conf *, int);
 

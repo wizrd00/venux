@@ -8,9 +8,10 @@ idtr:
 
 section .text
 
-idt_set_table:
+idt_reload_table:
 	mov [idtr], si
 	mov [idtr + 2], rdi
+	lidt [idtr]
 	ret
 
-global idt_set_table
+global idt_reload_table

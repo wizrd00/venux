@@ -3,9 +3,6 @@
 uint64_t kern_paddr;
 uint64_t kern_vaddr;
 uint64_t kern_size;
-uint64_t *phys_pml4;
-uint64_t gdt[GDT_ENTRY_COUNT];
-uint32_t tss[TSS_ENTRY_COUNT];
 uint64_t kern_text_vaddr;
 uint64_t kern_text_size;
 uint64_t kern_rodata_vaddr;
@@ -18,6 +15,12 @@ uint64_t kern_arena_vaddr;
 uint64_t kern_arena_size;
 uint64_t kern_stack_vaddr;
 uint64_t kern_stack_size;
+
+uint64_t *phys_pml4;
+
+uint64_t gdt[GDT_ENTRY_COUNT];
+uint32_t tss[TSS_ENTRY_COUNT];
+struct idt_gate idt[IDT_GATE_COUNT];
 
 static uint64_t *
 extract_kernel_vaddr(uint64_t entry)
@@ -112,9 +115,9 @@ kern_init_idt(void)
 static void
 kern_set_tables(void)
 {
-	gdt_set_table((uint64_t)gdt, (uint16_t)(GDT_SIZE - 1));
-	gdt_reload_table();
+	gdt_reload_table((uint64_t)gdt, (uint16_t)(GDT_SIZE - 1));
 	tss_reload_table((uint16_t)(GDT_TSS_INDEX * 8));
+	idt_reload_table((uint64_t)idt, (uint16_t)(IDT_SIZE - 1));
 	return;
 }
 

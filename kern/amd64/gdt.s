@@ -8,13 +8,10 @@ gdtr:
 
 section .text
 
-gdt_set_table:
+gdt_reload_table:
 	mov [gdtr], si
 	mov [gdtr + 2], rdi
 	lgdt [gdtr]
-	ret
-
-gdt_reload_table:
 	push 0x08
 	lea rax, [rel .reload_cs]
 	push rax
@@ -29,5 +26,4 @@ gdt_reload_table:
 	mov gs, ax
 	ret
 
-global gdt_set_table
 global gdt_reload_table
