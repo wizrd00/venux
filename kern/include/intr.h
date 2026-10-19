@@ -28,6 +28,48 @@ void intr_disable(void);
 
 void intr_enable(void);
 
+void intr_isr_de(void);
+
+void intr_isr_db(void);
+
+void intr_isr_nmi(void);
+
+void intr_isr_bp(void);
+
+void intr_isr_of(void);
+
+void intr_isr_br(void);
+
+void intr_isr_ud(void);
+
+void intr_isr_nm(void);
+
+void intr_isr_df(void);
+
+void intr_isr_ts(void);
+
+void intr_isr_np(void);
+
+void intr_isr_ss(void);
+
+void intr_isr_gp(void);
+
+void intr_isr_pf(void);
+
+void intr_isr_mf(void);
+
+void intr_isr_ac(void);
+
+void intr_isr_mc(void);
+
+void intr_isr_xm(void);
+
+void intr_isr_ve(void);
+
+void intr_isr_cp(void);
+
+void intr_isr_glob(uint64_t, uint64_t);
+
 int intr_get_isr_info(int, uint16_t, uint8_t, uint64_t *, uint16_t *,
     uint16_t *);
 

@@ -24,7 +24,6 @@ _halt:
 	jmp _halt
 
 kern_panic:
-	cli
 	jmp _halt
 
 kern_init:
