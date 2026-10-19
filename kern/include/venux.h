@@ -6,6 +6,7 @@
 #include "gdt.h"
 #include "tss.h"
 #include "idt.h"
+#include "intr.h"
 #include "vmm.h"
 
 #define KERNEL_CODE_ACCESS 0x9bU
@@ -24,6 +25,8 @@
 
 #define TSS_ACCESS 0x89U
 #define TSS_FLAGS 0x0U
+
+#define DEFAULT_IST_INDEX 0x1
 
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
@@ -72,6 +75,19 @@
 		_conf.limit = TSS_SIZE - 1;\
 		_conf.access = (uint8_t)TSS_ACCESS;\
 		_conf.flags = (uint8_t)TSS_FLAGS;\
+	} while (0)
+
+#define SET_IDT_INTR(_idt, _intr)\
+	do {\
+		ret = intr_get_isr_info(_intr,\
+		(uint16_t)(GDT_KERNEL_CODE_INDEX << 3), DEFAULT_IST_INDEX,\
+		&isr, &selector, &flags);\
+		if (RET_ERROR(ret))\
+			KERN_PANIC(ret);\
+		idt_set_gate(&gate, isr, selector, flags);\
+		ret = idt_modify_gate(_idt, &gate, _intr);\
+		if (RET_ERROR(ret))\
+			KERN_PANIC(ret);\
 	} while (0)
 
 void kern_main(struct kern_args *);

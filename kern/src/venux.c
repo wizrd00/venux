@@ -108,7 +108,30 @@ static void
 kern_init_idt(void)
 {
 	int ret = 0;
-	/* TODO : idt */
+	struct idt_gate gate;
+	uint64_t isr = 0;
+	uint16_t flags = 0;
+	uint16_t selector = 0;
+	SET_IDT_INTR(idt, INTR_DE);
+	SET_IDT_INTR(idt, INTR_DB);
+	SET_IDT_INTR(idt, INTR_NMI);
+	SET_IDT_INTR(idt, INTR_BP);
+	SET_IDT_INTR(idt, INTR_OF);
+	SET_IDT_INTR(idt, INTR_BR);
+	SET_IDT_INTR(idt, INTR_UD);
+	SET_IDT_INTR(idt, INTR_NM);
+	SET_IDT_INTR(idt, INTR_DF);
+	SET_IDT_INTR(idt, INTR_TS);
+	SET_IDT_INTR(idt, INTR_NP);
+	SET_IDT_INTR(idt, INTR_SS);
+	SET_IDT_INTR(idt, INTR_GP);
+	SET_IDT_INTR(idt, INTR_PF);
+	SET_IDT_INTR(idt, INTR_MF);
+	SET_IDT_INTR(idt, INTR_AC);
+	SET_IDT_INTR(idt, INTR_MC);
+	SET_IDT_INTR(idt, INTR_XM);
+	SET_IDT_INTR(idt, INTR_VE);
+	SET_IDT_INTR(idt, INTR_CP);
 	return;
 }
 
@@ -335,6 +358,7 @@ kern_main(struct kern_args *kargs)
 	kern_init_tss();
 	kern_init_idt();
 	kern_set_tables();
+	intr_enable();
 	kern_init_arena();
 	kern_verify_memtypes(&kargs->mem);
 	kern_init_pml4();

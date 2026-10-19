@@ -28,7 +28,7 @@ void intr_disable(void);
 
 void intr_enable(void);
 
-int intr_get_isr_info(int, uint8_t, uint8_t, uint64_t *, uint16_t *,
+int intr_get_isr_info(int, uint16_t, uint8_t, uint64_t *, uint16_t *,
     uint16_t *);
 
 #endif
