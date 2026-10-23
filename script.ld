@@ -5,7 +5,10 @@ _kernel_base = 0xffffffff80000000;
 _kernel_gap = 1M;
 
 _kernel_arena_size = 256K;
-_kernel_stack_size = 4K;
+_kernel_ist1_size = 4K;
+_kernel_ist2_size = 4K;
+_kernel_ist3_size = 4K;
+_kernel_stack_size = 8K;
 
 PHDRS
 {
@@ -45,8 +48,23 @@ SECTIONS
 		_kernel_arena_start = .;
 		. += _kernel_arena_size;
 	} :arena
-	.stack : ALIGN(4K) {
+	.ist1 : ALIGN(4K) {
 		_kernel_arena_end = .;
+		_kernel_ist1_start = .;
+		. += _kernel_ist1_size;
+	} :stack
+	.ist2 : ALIGN(4K) {
+		_kernel_ist1_end = .;
+		_kernel_ist2_start = .;
+		. += _kernel_ist2_size;
+	} :stack
+	.ist3 : ALIGN(4K) {
+		_kernel_ist2_end = .;
+		_kernel_ist3_start = .;
+		. += _kernel_ist3_size;
+	}
+	.stack : ALIGN(4K) {
+		_kernel_ist3_end = .;
 		_kernel_stack_start = .;
 		. += _kernel_stack_size;
 	} :stack

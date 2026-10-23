@@ -26,8 +26,6 @@
 #define TSS_ACCESS 0x89U
 #define TSS_FLAGS 0x0U
 
-#define DEFAULT_IST_INDEX 0x1
-
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
 #define ALLOC_PML4(_pml4, _ret)\
@@ -77,10 +75,10 @@
 		_conf.flags = (uint8_t)TSS_FLAGS;\
 	} while (0)
 
-#define SET_IDT_INTR(_idt, _intr)\
+#define SET_IDT_INTR(_idt, _intr, _ist)\
 	do {\
 		ret = intr_get_isr_info(_intr,\
-		(uint16_t)(GDT_KERNEL_CODE_INDEX << 3), DEFAULT_IST_INDEX,\
+		(uint16_t)(GDT_KERNEL_CODE_INDEX << 3), (uint8_t)_ist,\
 		&isr, &selector, &flags);\
 		if (RET_ERROR(ret))\
 			KERN_PANIC(ret);\
@@ -104,6 +102,12 @@ extern uint8_t _kernel_bss_start[];
 extern uint8_t _kernel_bss_end[];
 extern uint8_t _kernel_arena_start[];
 extern uint8_t _kernel_arena_end[];
+extern uint8_t _kernel_ist1_start[];
+extern uint8_t _kernel_ist1_end[];
+extern uint8_t _kernel_ist2_start[];
+extern uint8_t _kernel_ist2_end[];
+extern uint8_t _kernel_ist3_start[];
+extern uint8_t _kernel_ist3_end[];
 extern uint8_t _kernel_stack_start[];
 extern uint8_t _kernel_stack_end[];
 
@@ -120,6 +124,12 @@ extern uint64_t kern_bss_vaddr;
 extern uint64_t kern_bss_size;
 extern uint64_t kern_arena_vaddr;
 extern uint64_t kern_arena_size;
+extern uint64_t kern_ist1_vaddr;
+extern uint64_t kern_ist1_size;
+extern uint64_t kern_ist2_vaddr;
+extern uint64_t kern_ist2_size;
+extern uint64_t kern_ist3_vaddr;
+extern uint64_t kern_ist3_size;
 extern uint64_t kern_stack_vaddr;
 extern uint64_t kern_stack_size;
 

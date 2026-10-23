@@ -13,6 +13,12 @@ uint64_t kern_bss_vaddr;
 uint64_t kern_bss_size;
 uint64_t kern_arena_vaddr;
 uint64_t kern_arena_size;
+uint64_t kern_ist1_vaddr;
+uint64_t kern_ist1_size;
+uint64_t kern_ist2_vaddr;
+uint64_t kern_ist2_size;
+uint64_t kern_ist3_vaddr;
+uint64_t kern_ist3_size;
 uint64_t kern_stack_vaddr;
 uint64_t kern_stack_size;
 
@@ -61,6 +67,18 @@ kern_init_addrs(const struct kern_args *kargs)
 	kern_arena_size = (uint64_t)(_kernel_arena_end - _kernel_arena_start);
 	if (!PAGE_ALIGNED(kern_arena_size))
 		KERN_PANIC(KERN_ERROR_INVALID_ARENA_SIZE);
+	kern_ist1_vaddr = (uint64_t)(_kernel_ist1_start);
+	kern_ist1_size = (uint64_t)(_kernel_ist1_end - _kernel_ist1_start);
+	if (!PAGE_ALIGNED(kern_ist1_size))
+		KERN_PANIC(KERN_ERROR_INVALID_IST1_SIZE);
+	kern_ist2_vaddr = (uint64_t)(_kernel_ist2_start);
+	kern_ist2_size = (uint64_t)(_kernel_ist2_end - _kernel_ist2_start);
+	if (!PAGE_ALIGNED(kern_ist2_size))
+		KERN_PANIC(KERN_ERROR_INVALID_IST2_SIZE);
+	kern_ist3_vaddr = (uint64_t)(_kernel_ist3_start);
+	kern_ist3_size = (uint64_t)(_kernel_ist3_end - _kernel_ist3_start);
+	if (!PAGE_ALIGNED(kern_ist3_size))
+		KERN_PANIC(KERN_ERROR_INVALID_IST3_SIZE);
 	kern_stack_vaddr = (uint64_t)_kernel_stack_start;
 	kern_stack_size = (uint64_t)(_kernel_stack_end - _kernel_stack_start);
 	if (!PAGE_ALIGNED(kern_stack_size))
@@ -100,7 +118,20 @@ static void
 kern_init_tss(void)
 {
 	int ret = 0;
-	/* TODO : tss */
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_RSP0_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_RSP1_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_RSP2_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)kern_ist1_vaddr + kern_ist1_size,
+	    TSS_IST1_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)kern_ist2_vaddr + kern_ist2_size,
+	    TSS_IST2_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)kern_ist3_vaddr + kern_ist3_size,
+	    TSS_IST3_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_IST4_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_IST5_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_IST6_INDEX);
+	tss_modify_ptr_entry(tss, (uint64_t)0, TSS_IST7_INDEX);
+	tss_modify_iopb_entry(tss, (uint16_t)TSS_SIZE);
 	return;
 }
 
@@ -112,26 +143,26 @@ kern_init_idt(void)
 	uint64_t isr = 0;
 	uint16_t flags = 0;
 	uint16_t selector = 0;
-	SET_IDT_INTR(idt, INTR_DE);
-	SET_IDT_INTR(idt, INTR_DB);
-	SET_IDT_INTR(idt, INTR_NMI);
-	SET_IDT_INTR(idt, INTR_BP);
-	SET_IDT_INTR(idt, INTR_OF);
-	SET_IDT_INTR(idt, INTR_BR);
-	SET_IDT_INTR(idt, INTR_UD);
-	SET_IDT_INTR(idt, INTR_NM);
-	SET_IDT_INTR(idt, INTR_DF);
-	SET_IDT_INTR(idt, INTR_TS);
-	SET_IDT_INTR(idt, INTR_NP);
-	SET_IDT_INTR(idt, INTR_SS);
-	SET_IDT_INTR(idt, INTR_GP);
-	SET_IDT_INTR(idt, INTR_PF);
-	SET_IDT_INTR(idt, INTR_MF);
-	SET_IDT_INTR(idt, INTR_AC);
-	SET_IDT_INTR(idt, INTR_MC);
-	SET_IDT_INTR(idt, INTR_XM);
-	SET_IDT_INTR(idt, INTR_VE);
-	SET_IDT_INTR(idt, INTR_CP);
+	SET_IDT_INTR(idt, INTR_DE, 0x0);
+	SET_IDT_INTR(idt, INTR_DB, 0x0);
+	SET_IDT_INTR(idt, INTR_NMI, 0x1);
+	SET_IDT_INTR(idt, INTR_BP, 0x0);
+	SET_IDT_INTR(idt, INTR_OF, 0x0);
+	SET_IDT_INTR(idt, INTR_BR, 0x0);
+	SET_IDT_INTR(idt, INTR_UD, 0x0);
+	SET_IDT_INTR(idt, INTR_NM, 0x0);
+	SET_IDT_INTR(idt, INTR_DF, 0x2);
+	SET_IDT_INTR(idt, INTR_TS, 0x0);
+	SET_IDT_INTR(idt, INTR_NP, 0x0);
+	SET_IDT_INTR(idt, INTR_SS, 0x0);
+	SET_IDT_INTR(idt, INTR_GP, 0x0);
+	SET_IDT_INTR(idt, INTR_PF, 0x0);
+	SET_IDT_INTR(idt, INTR_MF, 0x0);
+	SET_IDT_INTR(idt, INTR_AC, 0x0);
+	SET_IDT_INTR(idt, INTR_MC, 0x3);
+	SET_IDT_INTR(idt, INTR_XM, 0x0);
+	SET_IDT_INTR(idt, INTR_VE, 0x0);
+	SET_IDT_INTR(idt, INTR_CP, 0x0);
 	return;
 }
 
@@ -295,6 +326,21 @@ kern_secure_sections(void)
 	    extract_physmem_vaddr);
 	if (RET_ERROR(ret))
 		KERN_PANIC(ret);
+	ret = vmm_set_permission(kern_ist1_vaddr,
+	    kern_ist1_vaddr + kern_ist1_size, 0x2, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = vmm_set_permission(kern_ist2_vaddr,
+	    kern_ist2_vaddr + kern_ist2_size, 0x2, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
+	ret = vmm_set_permission(kern_ist3_vaddr,
+	    kern_ist3_vaddr + kern_ist3_size, 0x2, phys_pml4,
+	    extract_physmem_vaddr);
+	if (RET_ERROR(ret))
+		KERN_PANIC(ret);
 	ret = vmm_set_permission(kern_stack_vaddr,
 	    kern_stack_vaddr + kern_stack_size, 0x2, phys_pml4,
 	    extract_physmem_vaddr);
@@ -371,5 +417,6 @@ kern_main(struct kern_args *kargs)
 	kargs->mem.info = (void *)CONVERT_PHYSMEM_P2V(kargs->mem.info);
 	kern_secure_sections();
 	kern_secure_physmem(&kargs->mem);
+	__asm__ volatile("int 0x3");
 	return;
 }

@@ -24,6 +24,7 @@ CFLAGS := -O$(OPTIMIZATION_LEVEL) \
 	-fno-pic \
 	-fno-pie \
 	-ferror-limit=1 \
+	-masm=intel \
 	-mcmodel=kernel \
 	-mno-red-zone \
 	-mno-sse \

@@ -6,7 +6,7 @@ idt_set_gate(struct idt_gate *gate, uint64_t isr, uint16_t selector,
 {
 	gate->offset0 = (uint16_t)(isr & 0xffffULL);
 	gate->offset1 = (uint16_t)((isr >> 16) & 0xffffULL);
-	gate->offset2 = (uint16_t)(isr >> 32);
+	gate->offset2 = (uint32_t)(isr >> 32);
 	gate->selector = selector;
 	gate->flags = flags;
 	gate->resv = 0;
