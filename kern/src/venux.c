@@ -404,7 +404,6 @@ kern_main(struct kern_args *kargs)
 	kern_init_tss();
 	kern_init_idt();
 	kern_set_tables();
-	intr_enable();
 	kern_init_arena();
 	kern_verify_memtypes(&kargs->mem);
 	kern_init_pml4();
