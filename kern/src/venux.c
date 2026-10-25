@@ -417,6 +417,5 @@ kern_main(struct kern_args *kargs)
 	kargs->mem.info = (void *)CONVERT_PHYSMEM_P2V(kargs->mem.info);
 	kern_secure_sections();
 	kern_secure_physmem(&kargs->mem);
-	__asm__ volatile("int 0x03");
 	return;
 }
