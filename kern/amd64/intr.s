@@ -4,6 +4,7 @@ extern intr_isr_glob
 
 %macro ISR_STUB 1
 %if (%1 == 8) || (%1 >= 10 && %1 <= 14) || (%1 == 17) || (%1 == 21)
+%else
 	push 0
 %endif
 	push %1

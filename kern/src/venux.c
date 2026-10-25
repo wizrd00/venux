@@ -143,26 +143,11 @@ kern_init_idt(void)
 	uint64_t isr = 0;
 	uint16_t flags = 0;
 	uint16_t selector = 0;
-	SET_IDT_INTR(idt, INTR_DE, 0x0);
-	SET_IDT_INTR(idt, INTR_DB, 0x0);
-	SET_IDT_INTR(idt, INTR_NMI, 0x1);
-	SET_IDT_INTR(idt, INTR_BP, 0x0);
-	SET_IDT_INTR(idt, INTR_OF, 0x0);
-	SET_IDT_INTR(idt, INTR_BR, 0x0);
-	SET_IDT_INTR(idt, INTR_UD, 0x0);
-	SET_IDT_INTR(idt, INTR_NM, 0x0);
-	SET_IDT_INTR(idt, INTR_DF, 0x2);
-	SET_IDT_INTR(idt, INTR_TS, 0x0);
-	SET_IDT_INTR(idt, INTR_NP, 0x0);
-	SET_IDT_INTR(idt, INTR_SS, 0x0);
-	SET_IDT_INTR(idt, INTR_GP, 0x0);
-	SET_IDT_INTR(idt, INTR_PF, 0x0);
-	SET_IDT_INTR(idt, INTR_MF, 0x0);
-	SET_IDT_INTR(idt, INTR_AC, 0x0);
-	SET_IDT_INTR(idt, INTR_MC, 0x3);
-	SET_IDT_INTR(idt, INTR_XM, 0x0);
-	SET_IDT_INTR(idt, INTR_VE, 0x0);
-	SET_IDT_INTR(idt, INTR_CP, 0x0);
+	for (int i = 0; i < IDT_GATE_COUNT; i++) {
+		SET_IDT_INTR(idt, i,
+		    (i == INTR_NMI) ? 1 : (i == INTR_DF) ? 2 : (i == INTR_MC) ?
+		    3 : 0);
+	}
 	return;
 }
 
