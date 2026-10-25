@@ -9,22 +9,22 @@
 #include "intr.h"
 #include "vmm.h"
 
-#define KERNEL_CODE_ACCESS 0x9bU
-#define KERNEL_CODE_FLAGS 0x0aU
-#define KERNEL_CODE_LIMIT 0xfffffU
-#define KERNEL_DATA_ACCESS 0x93U
-#define KERNEL_DATA_FLAGS 0x08U
-#define KERNEL_DATA_LIMIT 0xfffffU
+#define KERNEL_GDT_CODE_ACCESS 0x9bU
+#define KERNEL_GDT_CODE_FLAGS 0x0aU
+#define KERNEL_GDT_CODE_LIMIT 0xfffffU
+#define KERNEL_GDT_DATA_ACCESS 0x93U
+#define KERNEL_GDT_DATA_FLAGS 0x08U
+#define KERNEL_GDT_DATA_LIMIT 0xfffffU
 
-#define USER_CODE_ACCESS 0xfbU
-#define USER_CODE_FLAGS 0x0aU
-#define USER_CODE_LIMIT 0xfffffU
-#define USER_DATA_ACCESS 0xf3U
-#define USER_DATA_FLAGS 0x08U
-#define USER_DATA_LIMIT 0xfffffU
+#define USER_GDT_CODE_ACCESS 0xfbU
+#define USER_GDT_CODE_FLAGS 0x0aU
+#define USER_GDT_CODE_LIMIT 0xfffffU
+#define USER_GDT_DATA_ACCESS 0xf3U
+#define USER_GDT_DATA_FLAGS 0x08U
+#define USER_GDT_DATA_LIMIT 0xfffffU
 
-#define TSS_ACCESS 0x89U
-#define TSS_FLAGS 0x0U
+#define TSS_GDT_ACCESS 0x89U
+#define TSS_GDT_FLAGS 0x0U
 
 #define EXTRACT_ADDR(_entry) (_entry & 0x000ffffffffff000ULL)
 
@@ -38,41 +38,41 @@
 #define SET_GDT_CONF_KERNEL_CODE(_conf)\
 	do {\
 		_conf.base = 0ULL;\
-		_conf.limit = KERNEL_CODE_LIMIT;\
-		_conf.access = (uint8_t)KERNEL_CODE_ACCESS;\
-		_conf.flags = (uint8_t)KERNEL_CODE_FLAGS;\
+		_conf.limit = KERNEL_GDT_CODE_LIMIT;\
+		_conf.access = (uint8_t)KERNEL_GDT_CODE_ACCESS;\
+		_conf.flags = (uint8_t)KERNEL_GDT_CODE_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_KERNEL_DATA(_conf)\
 	do {\
 		_conf.base = 0ULL;\
-		_conf.limit = KERNEL_DATA_LIMIT;\
-		_conf.access = (uint8_t)KERNEL_DATA_ACCESS;\
-		_conf.flags = (uint8_t)KERNEL_DATA_FLAGS;\
+		_conf.limit = KERNEL_GDT_DATA_LIMIT;\
+		_conf.access = (uint8_t)KERNEL_GDT_DATA_ACCESS;\
+		_conf.flags = (uint8_t)KERNEL_GDT_DATA_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_USER_CODE(_conf)\
 	do {\
 		_conf.base = 0ULL;\
-		_conf.limit = USER_CODE_LIMIT;\
-		_conf.access = (uint8_t)USER_CODE_ACCESS;\
-		_conf.flags = (uint8_t)USER_CODE_FLAGS;\
+		_conf.limit = USER_GDT_CODE_LIMIT;\
+		_conf.access = (uint8_t)USER_GDT_CODE_ACCESS;\
+		_conf.flags = (uint8_t)USER_GDT_CODE_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_USER_DATA(_conf)\
 	do {\
 		_conf.base = 0ULL;\
-		_conf.limit = USER_DATA_LIMIT;\
-		_conf.access = (uint8_t)USER_DATA_ACCESS;\
-		_conf.flags = (uint8_t)USER_DATA_FLAGS;\
+		_conf.limit = USER_GDT_DATA_LIMIT;\
+		_conf.access = (uint8_t)USER_GDT_DATA_ACCESS;\
+		_conf.flags = (uint8_t)USER_GDT_DATA_FLAGS;\
 	} while (0)
 
 #define SET_GDT_CONF_TSS(_tss, _conf)\
 	do {\
 		_conf.base = (uint64_t)_tss;\
 		_conf.limit = TSS_SIZE - 1;\
-		_conf.access = (uint8_t)TSS_ACCESS;\
-		_conf.flags = (uint8_t)TSS_FLAGS;\
+		_conf.access = (uint8_t)TSS_GDT_ACCESS;\
+		_conf.flags = (uint8_t)TSS_GDT_FLAGS;\
 	} while (0)
 
 #define SET_IDT_INTR(_idt, _intr, _ist)\
