@@ -1,2 +1,2 @@
-1.implement intr_get_isr_info() then kern_init_idt()
-2.implement kern_init_tss()
+1.testing the kernel on real machine again
+2.start implementing mm
